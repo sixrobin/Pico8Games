@@ -21,7 +21,6 @@ function _draw()
 end
 
 function _init()
-
 	timer = {
 		elapsed = 0,
 		last=time() }
@@ -64,7 +63,6 @@ end
 
 -- ---- todo ----
 
--- optimize tokens.
 -- align texts according to score.
 -- wait any input to start.
 -- add state machine methods?
@@ -75,6 +73,10 @@ end
 -- last tail part visual?
 
 -- no fruit particles on init.
+
+-- main menu.
+-- fadings.
+-- particles using sprites.
 -->8
 -- inputs.
 
@@ -91,7 +93,7 @@ end
 --end
 
 function key_down(k)
-	return band(keys[k], 2) == 2
+	return keys[k] & 2 == 2
 end
 
 --function key_up(k)
@@ -99,17 +101,19 @@ end
 --end
 
 function update_key(k)
- if keys[k] == 0 then
+	local key = keys[k]
+
+ if key == 0 then
   if (btn(k)) keys[k] = 3
- elseif keys[k] == 1 then
+ elseif key == 1 then
   if (not btn(k)) keys[k] = 4
- elseif keys[k] == 3 then
+ elseif key == 3 then
   if btn(k) then
   	keys[k] = 1
   else
   	keys[k] = 4
   end
- elseif keys[k] == 4 then
+ elseif key == 4 then
   if btn(k) then
   	keys[k] = 3
   else
@@ -138,7 +142,7 @@ prev_tail_last_pos = {
  x = -1,
  y = -1 }
  
-tail_pulse_indexes = { }
+tail_pulse_indexes = {}
 
 function draw_snake()
 	-- tail.
@@ -149,7 +153,12 @@ function draw_snake()
 			 spr_index = 17
 			end
 		end
-		spr(spr_index, tail[t].x*5+1, tail[t].y*5+1)
+		
+		spr(
+			spr_index,
+			tail[t].x*5+1,
+			tail[t].y*5+1)
+		
 	end
 	
 	-- head.
@@ -187,37 +196,44 @@ function kill_snake()
 	
 	death_anim_step_timer = 0
 	add_shake(0.1)
+	sfx(4)
 	b4_gameover_draw_timer = 0
+	pulse_min = 99
+	pulse_max = 99
 end
 
-function rewind_tail()
-	for t = 1,#tail-1 do
-		tail[t] = {
-			x=tail[t+1].x,
-			y=tail[t+1].y}
-	end
-end
+--function rewind_tail()
+	--for t = 1,#tail-1 do
+		--tail[t] = {
+			--x=tail[t+1].x,
+			--y=tail[t+1].y}
+	--end
+--end
 
 function update_snake()
-	if key_down(0) and snk_last_dir_y != 0 then
-		snk_dir_x = -1
-		snk_dir_y = 0
-	elseif key_down(1) and snk_last_dir_y != 0 then
-		snk_dir_x = 1
-		snk_dir_y = 0
-	elseif key_down(2) and snk_last_dir_x != 0 then
-		snk_dir_x = 0
-		snk_dir_y = -1
-	elseif key_down(3) and snk_last_dir_x != 0 then
-		snk_dir_x = 0
-		snk_dir_y = 1
+	if snk_last_dir_y != 0 then
+		if key_down(0) then
+			snk_dir_x = -1
+			snk_dir_y = 0
+		elseif key_down(1) then
+			snk_dir_x = 1
+			snk_dir_y = 0
+		end
+	elseif snk_last_dir_x != 0 then
+		if key_down(2) then
+			snk_dir_x = 0
+			snk_dir_y = -1
+		elseif key_down(3) then
+			snk_dir_x = 0
+			snk_dir_y = 1
+		end
 	end
 	
 	step_timer += timer.elapsed
 	if step_timer > step_dur then
 
 		update_tail()
-		
+
 		if snk_dir_x != snk_last_dir_x
 			or snk_dir_y != snk_last_dir_y then
 			sfx(1)
@@ -235,7 +251,7 @@ function update_snake()
 		then
 			snk_x -= snk_dir_x
 			snk_y -= snk_dir_y
-			rewind_tail()
+			--rewind_tail()
 			kill_snake()
 			do return end
 		end
@@ -246,7 +262,7 @@ function update_snake()
 		and snk_y == fruit_y
 		then
 			eat_fruit()
-			add(tail, { x=snk_x,y=snk_y })
+			add(tail, { x = snk_x, y = snk_y })
 			fruit_eaten = true
 		end
 		
@@ -257,11 +273,7 @@ function update_snake()
 			then
 				kill_snake()
 				add_shake(0.1)
-				add_snk_self_bite_ptcs(
-					snk_x,
-					snk_y,
-					snk_dir_x,
-					snk_dir_y)
+				add_snk_self_bite_ptcs()
 				do return end
 			end
 		end
@@ -362,7 +374,6 @@ grid_h = 20
 
 border_col = 13
 border_blink_seq = { 13,4,8,4 }
-border_blink_step_dur = 2
 border_blink_index = 1
 border_blink_timer = 0
 
@@ -420,7 +431,7 @@ function update_border_blink()
 		border_col = 13
 	else
 		border_blink_timer += 1
-		if border_blink_timer > border_blink_step_dur then
+		if border_blink_timer > 2 then
 			border_blink_index += 1
 			if border_blink_index > #border_blink_seq then
 				border_blink_index = 1
@@ -430,29 +441,21 @@ function update_border_blink()
 		border_col = border_blink_seq[border_blink_index]
 	end
 end
-
-function update_pulse()
-	if pulse_min < 99 then
-		pulse_max += pulse_speed
-		pulse_min = pulse_max - 2
-	end
-end
 -->8
 -- pickups.
 
 fruit_x = -99
 fruit_y = -99
 
-fruit_pulse_speed = 6
 fruit_pulse_timer = 0
 
 function draw_fruit()
 	local size = 1
-	if fruit_pulse_timer > fruit_pulse_speed then
+	if fruit_pulse_timer > 6 then
 		size = 2
 	end
 
-	circfill(
+	circ(
 		fruit_x * 5 + 3,
 		fruit_y * 5 + 3,
 		size,
@@ -460,8 +463,8 @@ function draw_fruit()
 end
 
 function eat_fruit()
- add_fruit_eat_ptcs(fruit_x, fruit_y)
- pulse_grid(fruit_x, fruit_y, 6, 3)
+ add_fruit_eat_ptcs()
+ pulse_grid(fruit_x, fruit_y, 7, 3)
 	spawn_fruit()
 	sfx(0)
 end
@@ -480,21 +483,24 @@ function spawn_fruit()
 		found_pos = true
 		
 		for t = 1,#tail do
-			if fruit_x == tail[t].x
-			and fruit_y == tail[t].y then
+			if (fruit_x == tail[t].x
+			and fruit_y == tail[t].y)
+			or (fruit_x == snk_x
+			and fruit_y == snk_y)
+			then
 				found_pos = false
 				break
 			end
 		end
 	end
 	
-	add_fruit_spawn_ptcs(fruit_x, fruit_y)
+	add_fruit_spawn_ptcs()
 	fruit_pulse_timer = 0
 end
 
 function update_fruit()
 	fruit_pulse_timer += 1
-	if fruit_pulse_timer > 2 * fruit_pulse_speed then
+	if fruit_pulse_timer > 16 then
 		fruit_pulse_timer = 0
 	end
 end
@@ -552,12 +558,12 @@ pulse_max = 99
 pulse_col = 7
 pulse_speed = 1
 
-function add_fruit_eat_ptcs(x, y)
+function add_fruit_eat_ptcs()
  for p = 0,7 do
  	local alpha=rnd()
  	add_ptc(
- 		x * 5 + 5,
- 		y * 5 + 5,
+ 		fruit_x * 5 + 5,
+ 		fruit_y * 5 + 5,
  		sin(alpha) * 2 + rnd(),
  		cos(alpha) * 2 + rnd(),
  		0,
@@ -566,12 +572,12 @@ function add_fruit_eat_ptcs(x, y)
  end
 end
 
-function add_fruit_spawn_ptcs(x, y)
+function add_fruit_spawn_ptcs()
  for p = 0,7 do
  	local alpha=rnd()
  	add_ptc(
- 		x * 5 + 5,
- 		y * 5 + 5,
+ 		fruit_x * 5 + 5,
+ 		fruit_y * 5 + 5,
  		sin(alpha) * 3 + rnd(),
  		cos(alpha) * 3 + rnd(),
  		0,
@@ -603,10 +609,7 @@ function add_ptc(
 end
 
 function add_shake(trauma)
-	cur_trauma += trauma;
-	if cur_trauma > 1 then
-		cur_trauma = 1
-	end
+	cur_trauma = mid(0, cur_trauma + trauma, 1)
 end
 
 function add_snk_death_ptc(x, y)
@@ -623,20 +626,20 @@ function add_snk_death_ptc(x, y)
  end
 end
 
-function add_snk_self_bite_ptcs(x, y, dir_x, dir_y)
+function add_snk_self_bite_ptcs()
  for p = 0,15 do
  
  	-- blood particles direction.
  	local alpha=0
- 	if (dir_x == -1) alpha = 180
- 	if (dir_y == 1) alpha = 270
- 	if (dir_y == -1) alpha = 90
+ 	if (snk_dir_x == -1) alpha = 180
+ 	if (snk_dir_y == 1) alpha = 270
+ 	if (snk_dir_y == -1) alpha = 90
  
  	local rnd_vector = rnd_vector_in_cone(alpha,90)
 
  	add_ptc(
- 		x * 5 + 3,
- 		y * 5 + 3,
+ 		snk_x * 5 + 3,
+ 		snk_y * 5 + 3,
  		rnd_vector.x * (3 + rnd(4)),
  		rnd_vector.y * (3 + rnd(4)),
  		0,
@@ -670,10 +673,9 @@ function rnd_vector_in_cone(angle, wideness)
 		- rnd(wideness / 720)
 		+ (angle / 360)
 
- vx = cos(rnd_dir)
- vy = sin(rnd_dir)
-
-	return { x = vx, y = vy }
+	return {
+		x = cos(rnd_dir),
+		y = sin(rnd_dir) }
 end
 
 function update_ptcs()
@@ -684,7 +686,6 @@ function update_ptcs()
 	 if ptc.age > ptc.max_age then
 	  del(ptcs, ptcs[p])
 	 else
-	 
 	 	-- update particle color.
 	 	ptc.col = ptc.col_seq[
 	 		1 + flr((ptc.age / ptc.max_age) * #ptc.col_seq)]
@@ -692,8 +693,14 @@ function update_ptcs()
 	 	-- move particles.
 	 	ptc.x += ptc.dir_x
 	 	ptc.y += ptc.dir_y
-	 	
 	 end
+	end
+end
+
+function update_pulse()
+	if pulse_min < 99 then
+		pulse_max += pulse_speed
+		pulse_min = pulse_max - 2
 	end
 end
 
@@ -703,17 +710,14 @@ function update_shake()
 	
 	camera(shake_x, shake_y)
 	
-	cur_trauma = cur_trauma * 0.95
+	cur_trauma *= 0.95
 	if cur_trauma < 0.05 then
 	 cur_trauma = 0
 	end
 end
 
 function set_shake(trauma)
-	cur_trauma = trauma;
-	if cur_trauma > 1 then
-		cur_trauma = 1
-	end
+	cur_trauma = mid(0, trauma, 1)
 end
 __gfx__
 00000000099900000999000009984000489900004888400000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -734,6 +738,7 @@ __sfx__
 000100000472008700087000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000200000f64006640056300463014630036200162000610066100562001610036000260000600006000560002600006000d6000c6000a6000860006600056000460002600006000060000600006000060000600
 000500001c0401c0401b0401b0401a040180401704016030150301303012030100300d0300a030080300703005030040300303002030010300003000030000300003000010000100001000000000000000000000
+000300000934009340073300432001310003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300
 __music__
 00 01424344
 
