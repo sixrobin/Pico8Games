@@ -3,7 +3,7 @@ version 29
 __lua__
 -- main.
 
-game_state = "play"
+game_state = "main_menu"
 
 function _draw()
 	cls(1)
@@ -12,12 +12,17 @@ function _draw()
 	--print("state:"..game_state, 4, 115, 7)
 	print(timer.last,4,115,7)
 
-	draw_grid()
-	draw_snake()
-	draw_fruit()
-	draw_score()
-	draw_game_over()
-	draw_ptcs()
+	if game_state == "main_menu" then
+		draw_main_menu()
+	else
+		draw_grid()
+		draw_snake()
+		draw_fruit()
+		draw_score()
+		draw_game_over()
+		draw_ptcs()
+		draw_txts_displays()
+	end
 end
 
 function _init()
@@ -34,25 +39,35 @@ function _update()
 	update_timer()
 	update_keys()
 	
-	if game_state == "play" then
+	if game_state == "main_menu" then
+		if (key_down(5)) replay()
+	elseif game_state == "play" then
 		update_snake()
-		update_fruit()
 	elseif game_state == "game_over_anim" then
 	 update_snake_death_anim()
 	elseif game_state == "game_over" then
-	 if (key_down(5)) replay()
+	 update_game_over()
 	end
 	
 	update_shake()
 	update_ptcs()
 	update_pulse()
+	update_txts_displays()
 end
 
 function replay()
-	spawn_fruit()
+	spawn_fruit(false)
 	init_snake()
 	game_state = "play"
 	set_shake(0)
+end
+
+function update_game_over()
+	if key_down(5) then
+		replay()
+	elseif key_down(4) then
+		game_state="main_menu"
+	end
 end
 
 function update_timer()
@@ -64,17 +79,8 @@ end
 -- ---- todo ----
 
 -- align texts according to score.
--- wait any input to start.
 -- add state machine methods?
 
--- pop a +1 sign on fruit pickup.
--- fruit visual.
--- fruit spawn better visual.
--- last tail part visual?
-
--- no fruit particles on init.
-
--- main menu.
 -- fadings.
 -- particles using sprites.
 -->8
@@ -186,6 +192,7 @@ end
 
 function kill_snake()
 	game_state = "game_over_anim"
+	tail_pulse_indexes = {}
 	remove_fruit()
 	
 	-- set sprite for death anim.
@@ -411,7 +418,7 @@ function draw_grid()
 			-- fruit halo.
 			if game_state == "play" and pulse_min > 4 then
 				if sqrt((x-fruit_x) * (x-fruit_x) + (y-fruit_y) * (y-fruit_y)) < 3 then
-					col=13
+					col=14
 				end
 			end
 				
@@ -447,25 +454,29 @@ end
 fruit_x = -99
 fruit_y = -99
 
-fruit_pulse_timer = 0
-
 function draw_fruit()
-	local size = 1
-	if fruit_pulse_timer > 6 then
-		size = 2
+	local offset = 0
+	--if fruit_offset_timer > 6 then
+	if timer.last*4 % 2 < 1 then
+		offset = 1
 	end
-
-	circ(
-		fruit_x * 5 + 3,
-		fruit_y * 5 + 3,
-		size,
-		7)
+	
+	spr(18, fruit_x*5, fruit_y*5 - offset)
 end
 
 function eat_fruit()
  add_fruit_eat_ptcs()
  pulse_grid(fruit_x, fruit_y, 7, 3)
-	spawn_fruit()
+	add_txt_display(
+		"+1",
+		fruit_x * 5, 
+		fruit_y * 5,
+		fruit_x * 5 + snk_dir_x * 15,
+		fruit_y * 5 + snk_dir_y * 15, 
+		{ 7, 7, 10, 5, 2 },
+		12)
+	
+	spawn_fruit(true)
 	sfx(0)
 end
 
@@ -474,7 +485,7 @@ function remove_fruit()
 	fruit_y = -99
 end
 
-function spawn_fruit()
+function spawn_fruit(with_ptcs)
 	local found_pos = false
 	while not found_pos do
 	
@@ -494,14 +505,17 @@ function spawn_fruit()
 		end
 	end
 	
-	add_fruit_spawn_ptcs()
-	fruit_pulse_timer = 0
-end
+	if with_ptcs then
+		add_txt_display(
+			"♥",
+			fruit_x * 5, 
+			fruit_y * 5,
+			fruit_x * 5,
+			fruit_y * 5 - 10, 
+			{ 7, 7, 8, 1 },
+			12)
 
-function update_fruit()
-	fruit_pulse_timer += 1
-	if fruit_pulse_timer > 16 then
-		fruit_pulse_timer = 0
+		add_fruit_spawn_ptcs()
 	end
 end
 -->8
@@ -510,34 +524,41 @@ end
 dur_b4_gameover_draw = 36
 b4_gameover_draw_timer = 0
 
-replay_msg_blink_seq = { 7,15,5,2,5,15 }
-replay_msg_step_dur = 1
-replay_msg_index = 1
-replay_msg_timer = 0
+play_msg_blink_seq = { 7,15,5,2,5,15 }
+play_msg_step_dur = 1
+play_msg_index = 1
+play_msg_timer = 0
 
 function draw_game_over()
 	if game_state == "game_over" then
-		
 		b4_gameover_draw_timer += 1
-		replay_msg_timer += 1
-	
-		if replay_msg_timer > replay_msg_step_dur then
-			replay_msg_index += 1
-			if replay_msg_index > #replay_msg_blink_seq then
-				replay_msg_index = 1
-			end
-			replay_msg_timer = 0
-		end
-	
-		local replay_msg_col = replay_msg_blink_seq[replay_msg_index]
-	
 		if b4_gameover_draw_timer > dur_b4_gameover_draw then
-			rectfill(10, 45, 117, 61, 1)
-			rect(10, 45, 117, 61, 13)
+			rectfill(10, 45, 117, 67, 1)
+			rect(10, 45, 117, 67, 8)
 			print("game over! score:"..score, 30, 48, 7)
-			print("press ❎ to replay", 30, 54, replay_msg_col)
+			print("❎ play again", 30, 54, 7)
+			print("🅾️ back to menu", 30, 60, 7)
 		end
 	end
+end
+
+function draw_main_menu()
+	play_msg_timer += 1
+	if play_msg_timer > play_msg_step_dur then
+		play_msg_index += 1
+		if play_msg_index > #play_msg_blink_seq then
+			play_msg_index = 1
+		end
+		play_msg_timer = 0
+	end
+
+	local play_msg_col = play_msg_blink_seq[play_msg_index]
+
+	rectfill(0, 0, 127, 127, 1)
+	rectfill(10, 45, 117, 67, 0)
+	rect(10, 45, 117, 67, 8)
+	print("snake !", 50, 50, 7)
+	print("press ❎ to play", 31, 58, play_msg_col)
 end
 
 function draw_score()
@@ -550,6 +571,8 @@ end
 
 cur_trauma = 0
 ptcs = {} -- particles.
+
+txts_displays = {}
 
 pulse_x=0
 pulse_y=0
@@ -573,17 +596,29 @@ function add_fruit_eat_ptcs()
 end
 
 function add_fruit_spawn_ptcs()
- for p = 0,7 do
+ for p = 0,15 + rnd(10) do
  	local alpha=rnd()
  	add_ptc(
  		fruit_x * 5 + 5,
  		fruit_y * 5 + 5,
- 		sin(alpha) * 3 + rnd(),
- 		cos(alpha) * 3 + rnd(),
+ 		sin(alpha) * (4 + rnd(2)),
+ 		cos(alpha) * (4 + rnd(2)),
  		0,
  		6,
  		{ 7 })
  end
+end
+
+function add_txt_display(txt, x, y, dx, dy, col_seq, max_age)
+ add(txts_displays,
+ 	{ txt = txt,
+	 x = x,
+	 y = y,
+	 dx = dx,
+	 dy = dy,
+	 col_seq = col_seq,
+	 timer = 0,
+	 max_age = max_age })
 end
 
 function add_ptc(
@@ -627,7 +662,7 @@ function add_snk_death_ptc(x, y)
 end
 
 function add_snk_self_bite_ptcs()
- for p = 0,15 do
+ for p = 0,15+rnd(10) do
  
  	-- blood particles direction.
  	local alpha=0
@@ -635,17 +670,35 @@ function add_snk_self_bite_ptcs()
  	if (snk_dir_y == 1) alpha = 270
  	if (snk_dir_y == -1) alpha = 90
  
- 	local rnd_vector = rnd_vector_in_cone(alpha,90)
+ 	local rnd_vector = rnd_vector_in_cone(alpha,135)
 
  	add_ptc(
  		snk_x * 5 + 3,
  		snk_y * 5 + 3,
- 		rnd_vector.x * (3 + rnd(4)),
- 		rnd_vector.y * (3 + rnd(4)),
+ 		rnd_vector.x * (3 + rnd(2)),
+ 		rnd_vector.y * (3 + rnd(2)),
  		0,
  		6,
  		{ 8, 2 })
  end
+ 
+ add_txt_display(
+		"!!!",
+		snk_x * 5 - 2, 
+		snk_y * 5,
+		snk_x * 5 - 2 + snk_dir_x * 10,
+		snk_y * 5 + snk_dir_y * 10,
+		{ 7, 7, 8, 1 },
+		12)
+ 
+end
+
+function draw_txts_displays()
+	for t in all(txts_displays) do
+		local col = t.col_seq[
+	 	1 + flr((t.timer / t.max_age) * #t.col_seq)]
+		print(t.txt, t.x, t.y, col)
+	end
 end
 
 function draw_ptcs()
@@ -676,6 +729,17 @@ function rnd_vector_in_cone(angle, wideness)
 	return {
 		x = cos(rnd_dir),
 		y = sin(rnd_dir) }
+end
+
+function update_txts_displays()
+	for t in all(txts_displays) do
+		t.x += (t.dx - t.x) / 5
+		t.y += (t.dy - t.y) / 5
+		t.timer += 1
+		if t.timer > t.max_age then
+			del(txts_displays, t)
+		end
+	end
 end
 
 function update_ptcs()
@@ -721,18 +785,20 @@ function set_shake(trauma)
 end
 __gfx__
 00000000099900000999000009984000489900004888400000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000999980009191900091998000899190009999900000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000979980009191900091998000899190009999900000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00700700999980008999800099998000899990008999800000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00077000488840009999900091998000899190009191900000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00077000044400004888400009984000489900000999000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000077700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000007777a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000007777a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000777790000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000aa900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000077700000033000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000007777a0000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000007777a00008888e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000077779000088877e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000aa900000888878000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000288888000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000022220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000100002575025750257502475022750207501e7501c7501875014750127400e7400b73006720017100070009700087000670000700037000270001700007000070000700007000070000700007000070000700
 000100000472008700087000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
