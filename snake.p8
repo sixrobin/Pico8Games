@@ -3,25 +3,10 @@ version 29
 __lua__
 -- main.
 
--- ---- todo ----
 
--- align texts according to score.
--- add state machine methods?
-
--- fadings & transitions.
--- particles using sprites.
--- feedback when menu nav input.
-
--- ? snake accel is strange.
-
--- refacto:
--- -- tab main / init.
--- -- tab inputs.
--- -- tab draw.
--- -- tab update.
-
-game_state = "main_menu"
-
+----------------------
+-- draw.
+----------------------
 function _draw()
 	cls(1)
 	
@@ -42,6 +27,10 @@ function _draw()
 	end
 end
 
+
+----------------------
+-- init.
+----------------------
 function _init()
 	timer = {
 		elapsed = 0,
@@ -53,6 +42,10 @@ function _init()
 	spawn_fruit()
 end
 
+
+----------------------
+-- update.
+----------------------
 function _update()
 	update_timer()
 	update_keys()
@@ -72,81 +65,47 @@ function _update()
 	update_pulse()
 	update_txts_displays()
 end
-
-function replay()
-	spawn_fruit(false)
-	init_snake()
-	game_state = "play"
-	set_shake(0)
-end
-
-function update_game_over()
-	if key_down(5) then
-		replay()
-	elseif key_down(4) then
-		game_state="main_menu"
-	end
-end
-
-function update_timer()
- timer.elapsed = (time() - timer.last)
- timer.last = time()
-end
 -->8
+-- variables.
+
+----------------------
+-- general.
+----------------------
+
+game_state = "main_menu"
+
+
+----------------------
 -- inputs.
+----------------------
 
 keys = {}
 
-function init_keys()
-	for k = 0,5 do
-		keys[k] = 0
-	end
-end
 
---function key_held(k)
-	--return band(keys[k], 1) == 1
---end
+----------------------
+-- grid.
+----------------------
 
-function key_down(k)
-	return keys[k] & 2 == 2
-end
+grid_w, grid_h = 23, 20
+border_col = 13
+border_blink_seq = { 13,4,8,4 }
+border_blink_index = 1
+border_blink_timer = 0
 
---function key_up(k)
-	--return band(keys[k], 4) == 4
---end
 
-function update_key(k)
-	local key = keys[k]
+----------------------
+-- fruit.
+----------------------
 
- if key == 0 then
-  if (btn(k)) keys[k] = 3
- elseif key == 1 then
-  if (not btn(k)) keys[k] = 4
- elseif key == 3 then
-  if btn(k) then
-  	keys[k] = 1
-  else
-  	keys[k] = 4
-  end
- elseif key == 4 then
-  if btn(k) then
-  	keys[k] = 3
-  else
-  	keys[k] = 0
-  end
- end
-end
+fruit_x, fruit_y = -99, -99
+fruit_pause = 0.11
 
-function update_keys()
-  for k = 0,5 do 
-  	update_key(k)
-  end
-end
--->8
+
+----------------------
 -- snake.
+----------------------
 
 step_timer = 0 
-fruit_pause = 0.11
 
 death_anim_step_dur = 6
 death_anim_step_timer = 0
@@ -159,52 +118,124 @@ prev_tail_last_pos = {
  
 tail_pulse_indexes = {}
 
-function draw_snake()
-	-- tail.
-	for t=1,#tail do
-		local spr_index = 1
-		for pulse in all(tail_pulse_indexes) do
-			if t == pulse then
-			 spr_index = 17
+
+----------------------
+-- gui.
+----------------------
+
+dur_b4_gameover_draw = 36
+b4_gameover_draw_timer = 0
+
+play_msg_blink_seq = { 7,15,5,2,5,15 }
+play_msg_step_dur = 2
+play_msg_index = 1
+play_msg_timer = 0
+
+main_menu_droplets = {}
+
+
+----------------------
+-- feedback.
+----------------------
+
+cur_trauma = 0
+ptcs = {}
+
+txts_displays = {}
+
+pulse_x, pulse_y = 0, 0
+pulse_min, pulse_max = 99
+pulse_col = 7
+pulse_speed = 1
+-->8
+-- punctual functions.
+
+
+----------------------
+-- general.
+----------------------
+
+function replay()
+	spawn_fruit(false)
+	init_snake()
+	game_state = "play"
+	set_shake(0)
+end
+
+
+----------------------
+-- inputs.
+----------------------
+
+function key_down(k)
+	return keys[k] & 2 == 2
+end
+
+--function key_held(k)
+	--return band(keys[k], 1) == 1
+--end
+--function key_up(k)
+	--return band(keys[k], 4) == 4
+--end
+
+
+----------------------
+-- fruit.
+----------------------
+
+function eat_fruit()
+ add_fruit_eat_ptcs()
+ pulse_grid(fruit_x, fruit_y, 7, 3)
+	add_txt_display("+1",
+		fruit_x * 5, 
+		fruit_y * 5,
+		fruit_x * 5 + snk_dir_x * 15,
+		fruit_y * 5 + snk_dir_y * 15, 
+		{ 7, 7, 10, 5, 2 }, 12)
+	
+	spawn_fruit(true)
+	sfx(0)
+end
+
+function spawn_fruit(with_ptcs)
+	local found_pos = false
+	while not found_pos do
+	
+		fruit_x = flr(rnd(grid_w)) + 1
+		fruit_y = flr(rnd(grid_h)) + 1
+		found_pos = true
+		
+		for t = 1,#tail do
+			if (fruit_x == tail[t].x
+			and fruit_y == tail[t].y)
+			or (fruit_x == snk_x
+			and fruit_y == snk_y)
+			then
+				found_pos = false
+				break
 			end
 		end
-		
-		spr(
-			spr_index,
-			tail[t].x*5+1,
-			tail[t].y*5+1)
-		
 	end
 	
-	-- head.
-	if game_state == "play" then
-		spr(snk_spr, snk_x*5+1, snk_y*5+1)
-	elseif game_state == "game_over_anim" then
-		spr(snk_spr, snk_x*5+1, snk_y*5+1)
+	if with_ptcs then
+		add_txt_display("♥",
+			fruit_x * 5, fruit_y * 5,
+			fruit_x * 5, fruit_y * 5 - 10, 
+			{ 7, 7, 8, 1 }, 18)
+
+		add_fruit_spawn_ptcs()
 	end
 end
 
-function init_snake()
-	snk_x, snk_y = 11, 10
-	snk_dir_x,	snk_dir_y = 1, 0
 
-	snk_last_dir_x, snk_last_dir_y
-		= snk_dir_x, snk_dir_y
-
-	snk_spr = 4
-	step_dur = 0.13 --0.2
-	step_min = 0.05
-	step_accel = 0.001
-	
-	score = 0
-	
-	tail = {}
-end
+----------------------
+-- snake.
+----------------------
 
 function kill_snake()
 	game_state = "game_over_anim"
 	tail_pulse_indexes = {}
-	remove_fruit()
+	fruit_x, fruit_y = -99, -99
 	
 	-- set sprite for death anim.
 	if (snk_dir_x == 1) snk_spr = 4
@@ -226,6 +257,281 @@ end
 			--y=tail[t+1].y}
 	--end
 --end
+
+
+----------------------
+-- feedback.
+----------------------
+
+function add_fruit_eat_ptcs()
+ for p = 0,7 do
+ 	local alpha=rnd()
+ 	add_ptc(
+ 		fruit_x * 5 + 5, fruit_y * 5 + 5,
+ 		sin(alpha) * 2 + rnd(),
+ 		cos(alpha) * 2 + rnd(),
+ 		0, 9, { 7, 12, 6, 7 })
+ end
+end
+
+function add_fruit_spawn_ptcs()
+ for p = 0,15 + rnd(10) do
+ 	local alpha=rnd()
+ 	add_ptc(
+ 		fruit_x * 5 + 5, fruit_y * 5 + 5,
+ 		sin(alpha) * (4 + rnd(2)),
+ 		cos(alpha) * (4 + rnd(2)),
+ 		0, 6, { 7 })
+ end
+end
+
+function add_ptc(x, y, dir_x, dir_y, t, max_age, col_seq)
+	local ptc = {
+		x = x, y = y,
+		dir_x = dir_x, dir_y = dir_y,
+		t = t,
+		age = 0,
+		max_age = max_age,
+		col_seq = col_seq }
+	
+	add(ptcs, ptc)
+end
+
+function add_shake(trauma)
+	cur_trauma = mid(0, cur_trauma + trauma, 1)
+end
+
+function add_snk_death_ptc(x, y)
+ for p = 0,10 do
+ 	local alpha=rnd()
+ 	add_ptc(x * 5 + 5, y * 5 + 5,
+ 		sin(alpha) * 2, cos(alpha) * 2,
+ 		0, 9, { 8, 9, 10, 15, 7 })
+ end
+end
+
+function add_snk_self_bite_ptcs()
+ for p = 0,15 + rnd(10) do
+ 
+ 	-- blood particles direction.
+ 	local alpha=0
+ 	if (snk_dir_x == -1) alpha = 180
+ 	if (snk_dir_y == 1) alpha = 270
+ 	if (snk_dir_y == -1) alpha = 90
+ 
+ 	local rnd_vector = rnd_vector_in_cone(alpha,135)
+
+ 	add_ptc(snk_x * 5 + 3, snk_y * 5 + 3,
+ 		rnd_vector.x * (3 + rnd(2)),
+ 		rnd_vector.y * (3 + rnd(2)),
+ 		0, 6, { 8, 2 })
+ end
+ 
+ add_txt_display("!!!",
+		snk_x * 5 - 2, 
+		snk_y * 5,
+		snk_x * 5 - 2 + snk_dir_x * 10,
+		snk_y * 5 + snk_dir_y * 10,
+		{ 7, 7, 8, 1 },
+		12)
+ 
+end
+
+function add_txt_display(txt, x, y, dx, dy, col_seq, max_age)
+ add(txts_displays,
+ 	{ txt = txt,
+	 x = x, y = y,
+	 dx = dx, dy = dy,
+	 col_seq = col_seq,
+	 timer = 0,
+	 max_age = max_age })
+end
+
+function fade_pal(perc)
+	local p = flr(mid(0, perc, 1) * 100)
+	local kmax, col, dpal, j, k
+	
+	dpal = { 
+	 0, 1, 1, 2,
+	 1, 13, 6, 4,
+	 4, 9, 3, 16,
+	 1, 13, 14 }
+	 
+	for j = 1,15 do
+		col = j
+		kmax = (p + (j * 1.46)) /  22
+		
+		for k = 1,kmax do
+			col = dpal[col]
+		end
+		
+		pal(j, col)
+	end
+end
+
+function pulse_grid(x, y, col, speed)
+	pulse_x, pulse_y = x, y
+	pulse_min, pulse_max = 0, 0
+	pulse_col = col
+	pulse_speed = speed
+end
+
+function set_shake(trauma)
+	cur_trauma = mid(0, trauma, 1)
+end
+
+
+----------------------
+-- utilities.
+----------------------
+
+function rnd_vector_in_cone(angle, wideness)
+	rnd_dir = 
+		rnd(wideness / 720)
+		- rnd(wideness / 720)
+		+ (angle / 360)
+
+	return {
+		x = cos(rnd_dir),
+		y = sin(rnd_dir) }
+end
+-->8
+-- init functions.
+
+
+----------------------
+-- inputs.
+----------------------
+
+function init_keys()
+	for k = 0,5 do
+		keys[k] = 0
+	end
+end
+
+
+----------------------
+-- snake.
+----------------------
+
+function init_snake()
+	snk_x, snk_y = 11, 10
+	snk_dir_x,	snk_dir_y = 1, 0
+
+	snk_last_dir_x, snk_last_dir_y
+		= snk_dir_x, snk_dir_y
+
+	snk_spr = 4
+	step_dur = 0.13 --0.2
+	step_min = 0.05
+	step_accel = 0.001
+	
+	score = 0
+	
+	tail = {}
+end
+
+
+----------------------
+-- gui.
+----------------------
+
+function init_main_menu_droplets()
+	local possible_cols = { 1, 1, 2, 13 }
+	local possible_sizes = { 1, 0.5, 0.5 }
+
+	for d = 1,150 do
+	 add(main_menu_droplets, {
+	 	x = rnd(127),
+	 	y = rnd(127),
+	 	dy = 1 + rnd(1.5),
+	 	col = possible_cols[flr(rnd(#possible_cols) + 1)],
+	 	size = possible_sizes[flr(rnd(#possible_sizes) + 1)] })
+	end
+end
+-->8
+-- update functions.
+
+
+----------------------
+-- general.
+----------------------
+
+function update_game_over()
+	if key_down(5) then
+		replay()
+	elseif key_down(4) then
+		game_state="main_menu"
+	end
+end
+
+function update_timer()
+ timer.elapsed = (time() - timer.last)
+ timer.last = time()
+end
+
+
+----------------------
+-- input.
+----------------------
+
+function update_keys()
+		local key
+  for k = 0,5 do
+  
+  	key = keys[k]
+
+		 if key == 0 then
+		  if (btn(k)) keys[k] = 3
+		 elseif key == 1 then
+		  if (not btn(k)) keys[k] = 4
+		 elseif key == 3 then
+		  if btn(k) then
+		  	keys[k] = 1
+		  else
+		  	keys[k] = 4
+		  end
+		 elseif key == 4 then
+		  if btn(k) then
+		  	keys[k] = 3
+		  else
+		  	keys[k] = 0
+		  end
+		 end
+  end
+end
+
+
+----------------------
+-- grid.
+----------------------
+
+function update_border_blink()
+	if game_state != "play"
+	or (snk_x > 1
+	and snk_x < grid_w
+	and snk_y > 1
+	and snk_y < grid_h)
+	then
+		border_blink_timer = 0
+		border_col = 13
+	else
+		border_blink_timer += 1
+		if border_blink_timer > 2 then
+			border_blink_index += 1
+			if border_blink_index > #border_blink_seq then
+				border_blink_index = 1
+			end
+			border_blink_timer = 0
+		end
+		border_col = border_blink_seq[border_blink_index]
+	end
+end
+
+
+----------------------
+-- snake.
+----------------------
 
 function update_snake()
 	if snk_last_dir_y != 0 then
@@ -360,7 +666,6 @@ function update_snake_death_anim()
 end
 
 function update_tail()
-
 	-- workaround to avoid snake
 	-- not being able to bite last
 	-- part of his tail.
@@ -379,15 +684,82 @@ function update_tail()
 		tail[1] = { x=snk_x,y=snk_y }
 	end
 end
+
+
+----------------------
+-- feedback.
+----------------------
+
+function update_ptcs()
+	local ptc
+	for p = #ptcs,1,-1 do
+	 ptc = ptcs[p]
+	 ptc.age += 1
+	 if ptc.age > ptc.max_age then
+	  del(ptcs, ptcs[p])
+	 else
+	 	-- update particle color.
+	 	ptc.col = ptc.col_seq[
+	 		1 + flr((ptc.age / ptc.max_age) * #ptc.col_seq)]
+	 	
+	 	-- move particles.
+	 	ptc.x += ptc.dir_x
+	 	ptc.y += ptc.dir_y
+	 end
+	end
+end
+
+function update_pulse()
+	if pulse_min < 99 then
+		pulse_max += pulse_speed
+		pulse_min = pulse_max - 2
+	end
+end
+
+function update_shake()
+	local shake_x = (8 - rnd(16)) * cur_trauma
+	local shake_y = (8 - rnd(16)) * cur_trauma
+	
+	camera(shake_x, shake_y)
+	
+	cur_trauma *= 0.95
+	if cur_trauma < 0.05 then
+	 cur_trauma = 0
+	end
+end
+
+function update_txts_displays()
+	for t in all(txts_displays) do
+		t.x += (t.dx - t.x) / 5
+		t.y += (t.dy - t.y) / 5
+		t.timer += 1
+		if t.timer > t.max_age then
+			del(txts_displays, t)
+		end
+	end
+end
 -->8
+-- draw functions.
+
+
+----------------------
+-- fruit.
+----------------------
+
+function draw_fruit()
+	local offset = 0
+	--if fruit_offset_timer > 6 then
+	if timer.last*4 % 2 < 1 then
+		offset = 1
+	end
+	
+	spr(18, fruit_x*5, fruit_y*5 - offset)
+end
+
+
+----------------------
 -- grid.
-
-grid_w, grid_h = 23, 20
-
-border_col = 13
-border_blink_seq = { 13,4,8,4 }
-border_blink_index = 1
-border_blink_timer = 0
+----------------------
 
 function draw_grid()
 	update_border_blink()
@@ -434,107 +806,39 @@ function draw_grid()
 	end
 end
 
-function update_border_blink()
-	if game_state != "play"
-	or (snk_x > 1
-	and snk_x < grid_w
-	and snk_y > 1
-	and snk_y < grid_h)
-	then
-		border_blink_timer = 0
-		border_col = 13
-	else
-		border_blink_timer += 1
-		if border_blink_timer > 2 then
-			border_blink_index += 1
-			if border_blink_index > #border_blink_seq then
-				border_blink_index = 1
+
+----------------------
+-- snake.
+----------------------
+
+function draw_snake()
+	-- tail.
+	for t=1,#tail do
+		local spr_index = 1
+		for pulse in all(tail_pulse_indexes) do
+			if t == pulse then
+			 spr_index = 17
 			end
-			border_blink_timer = 0
 		end
-		border_col = border_blink_seq[border_blink_index]
-	end
-end
--->8
--- pickups.
-
-fruit_x, fruit_y = -99, -99
-
-function draw_fruit()
-	local offset = 0
-	--if fruit_offset_timer > 6 then
-	if timer.last*4 % 2 < 1 then
-		offset = 1
-	end
-	
-	spr(18, fruit_x*5, fruit_y*5 - offset)
-end
-
-function eat_fruit()
- add_fruit_eat_ptcs()
- pulse_grid(fruit_x, fruit_y, 7, 3)
-	add_txt_display(
-		"+1",
-		fruit_x * 5, 
-		fruit_y * 5,
-		fruit_x * 5 + snk_dir_x * 15,
-		fruit_y * 5 + snk_dir_y * 15, 
-		{ 7, 7, 10, 5, 2 },
-		12)
-	
-	spawn_fruit(true)
-	sfx(0)
-end
-
-function remove_fruit()
-	fruit_x, fruit_y = -99, -99
-end
-
-function spawn_fruit(with_ptcs)
-	local found_pos = false
-	while not found_pos do
-	
-		fruit_x = flr(rnd(grid_w)) + 1
-		fruit_y = flr(rnd(grid_h)) + 1
-		found_pos = true
 		
-		for t = 1,#tail do
-			if (fruit_x == tail[t].x
-			and fruit_y == tail[t].y)
-			or (fruit_x == snk_x
-			and fruit_y == snk_y)
-			then
-				found_pos = false
-				break
-			end
-		end
+		spr(spr_index,
+			tail[t].x*5+1,
+			tail[t].y*5+1)
+		
 	end
 	
-	if with_ptcs then
-		add_txt_display(
-			"♥",
-			fruit_x * 5, 
-			fruit_y * 5,
-			fruit_x * 5,
-			fruit_y * 5 - 10, 
-			{ 7, 7, 8, 1 },
-			18)
-
-		add_fruit_spawn_ptcs()
+	-- head.
+	if game_state == "play" then
+		spr(snk_spr, snk_x*5+1, snk_y*5+1)
+	elseif game_state == "game_over_anim" then
+		spr(snk_spr, snk_x*5+1, snk_y*5+1)
 	end
 end
--->8
+
+
+----------------------
 -- gui.
-
-dur_b4_gameover_draw = 36
-b4_gameover_draw_timer = 0
-
-play_msg_blink_seq = { 7,15,5,2,5,15 }
-play_msg_step_dur = 2
-play_msg_index = 1
-play_msg_timer = 0
-
-main_menu_droplets = {}
+----------------------
 
 function draw_game_over()
 	if game_state == "game_over" then
@@ -597,143 +901,10 @@ function draw_score()
 	end
 end
 
-function init_main_menu_droplets()
-	local possible_cols = { 1, 1, 2, 13 }
-	local possible_sizes = { 1, 0.5, 0.5 }
 
-	for d = 1,150 do
-	 add(main_menu_droplets, {
-	 	x = rnd(127),
-	 	y = rnd(127),
-	 	dy = 1 + rnd(1.5),
-	 	col = possible_cols[flr(rnd(#possible_cols) + 1)],
-	 	size = possible_sizes[flr(rnd(#possible_sizes) + 1)] })
-	end
-end
--->8
+----------------------
 -- feedback.
-
-cur_trauma = 0
-ptcs = {} -- particles.
-
-txts_displays = {}
-
-pulse_x, pulse_y = 0, 0
-pulse_min, pulse_max = 99
-pulse_col = 7
-pulse_speed = 1
-
-function add_fruit_eat_ptcs()
- for p = 0,7 do
- 	local alpha=rnd()
- 	add_ptc(
- 		fruit_x * 5 + 5,
- 		fruit_y * 5 + 5,
- 		sin(alpha) * 2 + rnd(),
- 		cos(alpha) * 2 + rnd(),
- 		0,
- 		9,
- 		{ 7, 12, 6, 7 })
- end
-end
-
-function add_fruit_spawn_ptcs()
- for p = 0,15 + rnd(10) do
- 	local alpha=rnd()
- 	add_ptc(
- 		fruit_x * 5 + 5,
- 		fruit_y * 5 + 5,
- 		sin(alpha) * (4 + rnd(2)),
- 		cos(alpha) * (4 + rnd(2)),
- 		0,
- 		6,
- 		{ 7 })
- end
-end
-
-function add_txt_display(txt, x, y, dx, dy, col_seq, max_age)
- add(txts_displays,
- 	{ txt = txt,
-	 x = x,
-	 y = y,
-	 dx = dx,
-	 dy = dy,
-	 col_seq = col_seq,
-	 timer = 0,
-	 max_age = max_age })
-end
-
-function add_ptc(
-	x,
-	y,
-	dir_x,
-	dir_y,
-	t,
-	max_age,
-	col_seq)
-	
-	local ptc = {
-		x = x,
-		y = y,
-		dir_x = dir_x,
-		dir_y = dir_y,
-		t = t,
-		age = 0,
-		max_age = max_age,
-		col_seq = col_seq }
-	
-	add(ptcs, ptc)
-end
-
-function add_shake(trauma)
-	cur_trauma = mid(0, cur_trauma + trauma, 1)
-end
-
-function add_snk_death_ptc(x, y)
- for p = 0,10 do
- 	local alpha=rnd()
- 	add_ptc(
- 		x * 5 + 5,
- 		y * 5 + 5,
- 		sin(alpha) * 2,
- 		cos(alpha) * 2,
- 		0,
- 		9,
- 		{ 8, 9, 10, 15, 7 })
- end
-end
-
-function add_snk_self_bite_ptcs()
- for p = 0,15+rnd(10) do
- 
- 	-- blood particles direction.
- 	local alpha=0
- 	if (snk_dir_x == -1) alpha = 180
- 	if (snk_dir_y == 1) alpha = 270
- 	if (snk_dir_y == -1) alpha = 90
- 
- 	local rnd_vector = rnd_vector_in_cone(alpha,135)
-
- 	add_ptc(
- 		snk_x * 5 + 3,
- 		snk_y * 5 + 3,
- 		rnd_vector.x * (3 + rnd(2)),
- 		rnd_vector.y * (3 + rnd(2)),
- 		0,
- 		6,
- 		{ 8, 2 })
- end
- 
- add_txt_display(
-		"!!!",
-		snk_x * 5 - 2, 
-		snk_y * 5,
-		snk_x * 5 - 2 + snk_dir_x * 10,
-		snk_y * 5 + snk_dir_y * 10,
-		{ 7, 7, 8, 1 },
-		12)
- 
-end
+----------------------
 
 function draw_txts_displays()
 	for t in all(txts_displays) do
@@ -752,77 +923,17 @@ function draw_ptcs()
 		end
 	end
 end
+-->8
+-- todo
 
-function pulse_grid(x, y, col, speed)
-	pulse_x, pulse_y = x, y
-	pulse_min, pulse_max = 0, 0
-	pulse_col = col
-	pulse_speed = speed
-end
+-- align texts according to score.
+-- add state machine methods?
 
-function rnd_vector_in_cone(angle, wideness)
-	rnd_dir = 
-		rnd(wideness / 720)
-		- rnd(wideness / 720)
-		+ (angle / 360)
+-- fadings & transitions.
+-- particles using sprites.
+-- feedback when menu nav input.
 
-	return {
-		x = cos(rnd_dir),
-		y = sin(rnd_dir) }
-end
-
-function update_txts_displays()
-	for t in all(txts_displays) do
-		t.x += (t.dx - t.x) / 5
-		t.y += (t.dy - t.y) / 5
-		t.timer += 1
-		if t.timer > t.max_age then
-			del(txts_displays, t)
-		end
-	end
-end
-
-function update_ptcs()
-	local ptc
-	for p = #ptcs,1,-1 do
-	 ptc = ptcs[p]
-	 ptc.age += 1
-	 if ptc.age > ptc.max_age then
-	  del(ptcs, ptcs[p])
-	 else
-	 	-- update particle color.
-	 	ptc.col = ptc.col_seq[
-	 		1 + flr((ptc.age / ptc.max_age) * #ptc.col_seq)]
-	 	
-	 	-- move particles.
-	 	ptc.x += ptc.dir_x
-	 	ptc.y += ptc.dir_y
-	 end
-	end
-end
-
-function update_pulse()
-	if pulse_min < 99 then
-		pulse_max += pulse_speed
-		pulse_min = pulse_max - 2
-	end
-end
-
-function update_shake()
-	local shake_x = (8 - rnd(16)) * cur_trauma
-	local shake_y = (8 - rnd(16)) * cur_trauma
-	
-	camera(shake_x, shake_y)
-	
-	cur_trauma *= 0.95
-	if cur_trauma < 0.05 then
-	 cur_trauma = 0
-	end
-end
-
-function set_shake(trauma)
-	cur_trauma = mid(0, trauma, 1)
-end
+-- ? snake accel is strange.
 __gfx__
 00000000099900000999000009984000489900004888400000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000979980009191900091998000899190009999900000000000000000000000000000000000000000000000000000000000000000000000000000000000
