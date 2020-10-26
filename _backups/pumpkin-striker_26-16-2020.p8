@@ -9,20 +9,14 @@ __lua__
 
 -- todo.
 
+-- cut animation and visual.
 -- ? pk rotation.
 -- ? lvl progression bar.
 -- tuto.
 -- levels and final score.
 -- x first pk can't be bad.
--- ? candies particles.
--- knife rotation animation.
-
--- vfx
--- -- knife throw and land.
--- -- bad pk cut.
-
--- sfx
--- -- knife land.
+-- candies particles.
+-- knife sprite.
 
 ------------------------
 
@@ -30,15 +24,12 @@ __lua__
 function _draw()
 	cls(0)
 	draw_pk_light()
-	draw_knife_clamps()
-	draw_knife()
+	draw_cut_clamps()
+	draw_cut()
 	draw_pk()
 	draw_ptcs()
 	draw_gui()
 	draw_txts_displays()
-	
-	-- debug.
-	--line(pk_px+8,pk_py+10,knf_px+8,knf_py,11)
 end
 
 function _init()
@@ -46,8 +37,7 @@ function _init()
 end
 
 function _update()
-	update_knife_height()
-	update_knife_throw()
+	update_cut()
 	update_knife()
 	update_pk()
 	update_shake()
@@ -57,7 +47,7 @@ end
 -->8
 -- variables.
 
-pk_px,pk_py=-99
+pk_posx,pk_posy=-99
 pk_velx,pk_vely=0
 pk_grav=0.5
 pk_flip=false
@@ -66,17 +56,16 @@ pk_sprs={1,33,35}
 
 pk_isbad=false
 
-knf_vely=0
-knf_minh,knf_maxh=24,80
-knf_input_pressed=false
+cut_h=60
+cut_vel=0
+cut_cd,cut_timer=12,-1
+cut_maxh,cut_minh=24,80
+cut_input_pressed=false
 
---knf_spr_seq={97,99,101,103}
-knf_px,knf_py=0,60
-knf_dir,knf_speed=1,18
-knf_anim_on=false
-knf_flipx=true
-
-knf_scope_timer=0
+knife_spr_seq={97,99,101,103}
+knife_x,knife_dir=0,1
+knife_anim_on=false
+knife_flipx=true
 
 lvl,score,combo=1,0,0
 
@@ -85,12 +74,57 @@ ptcs,txts_displays={},{}
 -->8
 -- punctual functions.
 
+
+function try_cut()
+	if cut_h>=pk_posy-2
+	and cut_h<=pk_posy+18
+	then
+		-- cut succeeded.
+		
+		if pk_isbad then
+			-- bad pk cut.
+			combo=0
+			score-=lvl*100
+			if score<0 then
+				score=0
+			end
+			
+			add_txt_display("-"..tostr(lvl*100),
+				pk_posx,pk_posy,
+				pk_posx,pk_posy-15,
+				{ 7,8,2 }, 12)
+				
+			set_shake(0.15)
+			add_bad_pk_cut_ptc()
+			sfx(2)
+		else
+			-- good pk cut.
+			combo+=1
+			score+=combo
+		
+			add_txt_display("+"..combo,
+				pk_posx,pk_posy,
+				pk_posx,pk_posy-15,
+				{ 7,7,10,8,1 }, 12)
+			
+			set_shake(0.08)
+			add_pk_cut_ptc()
+			sfx(1)
+		end
+		
+		spawn_pk()
+	end
+	
+	knife_anim_on=true
+	sfx(0)
+end
+
 function spawn_pk()
  pk_isbad=rnd()<0.2
 
-	pk_px=20+rnd(80)
-	pk_velx=rnd(1.5)*sgn(60-pk_px)
-	pk_py=128
+	pk_posx=20+rnd(80)
+	pk_velx=rnd(1.5)*sgn(60-pk_posx)
+	pk_posy=128
 	pk_vely=-11+rnd(3)
 	
 	if pk_isbad then
@@ -112,8 +146,8 @@ function add_bad_pk_cut_ptc()
  for p=0,25+rnd(15) do
  	alpha=rnd()
  	add_ptc(
- 		pk_px,
- 		pk_py,
+ 		pk_posx,
+ 		pk_posy,
  		sin(alpha)*(1+rnd(5)),
  		cos(alpha)*(1+rnd(5)),
  		0,
@@ -128,7 +162,7 @@ function add_pk_cut_ptc()
  -- pixel particles.
  for p=0,8+rnd(5) do
  	alpha=rnd()
- 	add_ptc(pk_px,pk_py,
+ 	add_ptc(pk_posx,pk_posy,
  		sin(alpha)*(2+rnd(2)),
  		cos(alpha)*(2+rnd(2)),
  		0,24,
@@ -138,7 +172,7 @@ function add_pk_cut_ptc()
  -- chunks.
  for p=0,1+flr(rnd(2)) do
 	 alpha=rnd()
-	 add_ptc(pk_px,pk_py,
+	 add_ptc(pk_posx,pk_posy,
 	 	sin(alpha)*(2+rnd(2)),
 	 	cos(alpha)*(2+rnd(2)),
 	 	1,24,
@@ -150,8 +184,8 @@ function add_pk_lost_ptc()
  for p=0,10+rnd(5) do
  	local angle=rnd_vector_in_cone(90,135)
  	add_ptc(
- 		pk_px,
- 		pk_py-2,
+ 		pk_posx,
+ 		pk_posy-2,
  		angle.x*3,
  		angle.y*(2+rnd(3)),
  		0,
@@ -201,13 +235,13 @@ end
 ------------------------
 
 function draw_pk()
-	spr_outline(pk_spr,7,pk_px,pk_py,2,2,pk_flip)
+	spr_outline(pk_spr,7,pk_posx,pk_posy,2,2,pk_flip)
 
 	if pk_isbad then
 		-- draw bad pk mask.
 		palt(0,false)
 		palt(12,true)
-		spr(5,pk_px,pk_py,2,2,pk_flip)
+		spr(5,pk_posx,pk_posy,2,2,pk_flip)
 		palt(0,true)
 		palt(12,false)
 	end
@@ -215,12 +249,12 @@ end
 
 function draw_pk_light()
 	fillp(░)
-	circfill(pk_px+8,pk_py+8,20,1)
- circfill(pk_px+8,pk_py+8,14,0)
+	circfill(pk_posx+8,pk_posy+8,20,1)
+ circfill(pk_posx+8,pk_posy+8,14,0)
  fillp(▒)
- circfill(pk_px+8,pk_py+8,14,1)
+ circfill(pk_posx+8,pk_posy+8,14,1)
 	fillp(◆)
-	circfill(pk_px+8,pk_py+8,10,1)
+	circfill(pk_posx+8,pk_posy+8,10,1)
 	fillp(0)
 end
 
@@ -229,36 +263,24 @@ end
 -- cut.
 ------------------------
 
-
-
-function draw_knife()
-	local col=8
-	if knf_anim_on then
-		col=0
+function draw_cut()
+	local col=6
+	if cut_timer>-1 then
+		col=1
 	end
 	
-	-- scope.
 	for i=0,64 do
-		pset(i*5+knf_scope_timer*knf_dir,knf_py,col)
+		pset(i*3,cut_h,col)
 	end
 	
-	knf_scope_timer+=1
-	if knf_scope_timer>5 then
-	 knf_scope_timer=0
-	end
-	
-	if not knf_anim_on then
-		print("❎",knf_px+4,knf_py-9,2)
-		print("❎",knf_px+4,knf_py-10,7)
-	end
-	
-	spr(101,knf_px,knf_py-8,2,2,knf_flipx)
+	-- draw knife.
+	spr(101,knife_x,cut_h-8,2,2,knife_flipx)
 end
 
-function draw_knife_clamps()
+function draw_cut_clamps()
  	for i=0,64 do
-			pset(i*3,knf_minh,1)
-			pset(i*3,knf_maxh,1)
+			pset(i*3,cut_minh,1)
+			pset(i*3,cut_maxh,1)
 		end
  --line(0,cut_minh,127,cut_minh,1)
  --line(0,cut_maxh,127,cut_maxh,1)
@@ -309,108 +331,72 @@ end
 -->8
 -- update functions.
 
-
-------------------------
--- knife.
-------------------------
-
-function update_knife_height()
-	local any_input
-	if not knf_anim_on then
-		if btn(⬆️) then
-		 knf_vely-=2
-		 any_input=true
-		end
-		if btn(⬇️) then
-			knf_vely+=2
-			any_input=true
-		end
+function update_cut()
+	local any_input=false
+	if btn(⬆️) then
+	 cut_vel-=2
+	 any_input=true
+	end
+	if btn(⬇️) then
+		cut_vel+=2
+		any_input=true
 	end
 	
 	if any_input then
-		knf_vely=mid(-2,knf_vely,2)
+		cut_vel=mid(-2,cut_vel,2)
 	else
-		knf_vely*=0.75
+		cut_vel*=0.75
 	end
 	
-	knf_py=mid(knf_minh,knf_py+knf_vely,knf_maxh)
-end
-
-function update_knife_throw()
-	if not knf_anim_on
-	and not knf_input_pressed
+	cut_h+=cut_vel
+	cut_h=mid(cut_minh,cut_h,cut_maxh)
+	
+	-- cut input.
+	if cut_timer==-1
+	and not cut_input_pressed
 	and btn(❎) then
-		knf_anim_on=true
-		knf_input_pressed=true
-		sfx(0)
+		try_cut()
+		cut_input_pressed=true
+		cut_timer=0
 	end
-	knf_input_pressed=btn(❎)
+	
+	if not btn(❎) then
+		cut_input_pressed=false
+	end
+	
+	if cut_timer>-1 then
+		cut_timer+=1
+		if cut_timer>cut_cd then
+			cut_timer=-1
+		end
+	end
 end
 
 function update_knife()
-	if not knf_anim_on then
+	if not knife_anim_on then
 		return
 	end
 	
-	knf_px+=knf_dir*knf_speed
-	
-	-- check walls.
-	if knf_px>=112 or knf_px<=0 then
-		if knf_px>=112 then
-			knf_px=112
-		else
-		knf_px=0
-		end
-		knf_anim_on=false
-		knf_dir*=-1
-		knf_flipx=not knf_flipx
-	end
-
-	-- check pumpkin.
-	if knf_anim_on
-	and dist(pk_px+8,pk_py+10,knf_px+8,knf_py)<14
-	then
-		-- pumpkin cut.
-		if pk_isbad then
-			-- bad pk cut.
-			combo=0
-			score-=lvl*100
-			if score<0 then
-				score=0
-			end
-			
-			add_txt_display(
-				"-"..tostr(lvl*100),
-				pk_px,pk_py,pk_px,pk_py-15,{7,8,2},12)
-				
-			set_shake(0.15)
-			add_bad_pk_cut_ptc()
-			sfx(2)
-			
-		else
-			-- good pk cut.
-			combo+=1
-			score+=combo
-		
-			add_txt_display(
-				"+"..combo,
-				pk_px,pk_py,pk_px,pk_py-15,{7,7,10,8,1},12)
-			
-			set_shake(0.08)
-			add_pk_cut_ptc()
-			sfx(1)
-		end
-		
-		spawn_pk()
+	knife_x+=knife_dir*(256/cut_cd)
+	if knife_dir==1 and knife_x>=111 then
+		knife_x=111
+		knife_anim_on=false
+		knife_dir=-1
+		knife_flipx=false
+	elseif knife_dir==-1 and knife_x<=0 then
+		knife_x=0
+		knife_anim_on=false
+		knife_dir=1
+		knife_flipx=true
 	end
 end
 
 function update_pk()
 	pk_vely+=pk_grav
-	pk_px+=pk_velx
-	pk_py+=pk_vely
+	pk_posx+=pk_velx
+	pk_posy+=pk_vely
 	
-	if (pk_py>128) then
+	if (pk_posy>128) then
 		-- pumpkin lost.
 		add_pk_lost_ptc()
 		if not pk_isbad then
@@ -421,7 +407,7 @@ function update_pk()
 		end
 		spawn_pk()
 		set_shake(0.06)
-	end
+		end
 end
 
 
@@ -478,15 +464,6 @@ function update_txts_displays()
 end
 -->8
 -- tools.
-
-
-------------------------
--- distance.
-------------------------
-
-function dist(_ax,_ay,_bx,_by)
-	return sqrt((_ax-_bx)*(_ax-_bx)+(_ay-_by)*(_ay-_by))
-end
 
 
 ------------------------
