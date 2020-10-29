@@ -8,15 +8,21 @@ __lua__
 
 -- todo.
 
--- main menu.
+-- ! play again.
+
+-- main menu:
+-- -- animate background.
+-- -- fade in play pk / fx.
+-- -- top panel comes down.
+-- -- values reset.
+-- -- reset knf_py on start.
+
 -- anim ui texts.
--- optimize mid with min/max.
 
 -- ld.
 -- -- ? bonus lvls full of pk.
 
 -- wishlist.
--- -- tutorial.
 -- -- spider ropes in half
 -- -- for better offset effect.
 -- -- cuttable spider.
@@ -30,57 +36,89 @@ __lua__
 
 function _draw()
 	cls(0)
-	draw_pk_light()
-	draw_enviro()
-	draw_knife_clamps()
-	draw_knife_scope()
-	draw_pk()
-	draw_ptcs()
-	draw_knife()
-	draw_gui()
- draw_gover()
-	draw_txts_displays()
+	fade_pal(fade_perc)
 	
-	-- title test.
-	--spr(128,26,28,10,7)
-	--spr(get_table_item_mod(fire_anim_seq,3,0),77,30,1,2)
+	if gstate=="mainmenu" then
+		draw_knife()
+		draw_mainmenu()
+	elseif gstate=="playing" then
+		draw_pk_light()
+		draw_enviro()
+		draw_knife_clamps()
+		draw_knife_scope()
+		draw_pk()
+		draw_knife()
+		draw_gui()
+	 draw_gover()
+	end
+	
+	draw_ptcs()
+	draw_txts_displays()
 	
 	-- debug.
 	--line(pk_px+8,pk_py+10,knf_px+8,knf_py,11)
  --print(flr(pk_px).."/"..flr(pk_py),40,11,11)
  --print(gover_timer,40,11,11)
- --print("pk left:"..cur_lvl_pk_counter.."/"..cur_lvl.pk_count,40,11,11)
 end
 
 function _init()
 	init_lvls()
  init_sparks_ptcs()
 	next_pk()
+	fade_perc=1
 end
 
 function _update()
 	timer+=1
-	update_lvlup()
-	update_gover()
-	update_knife()
-	update_pk()
-	update_shake()
+	
+	if gstate=="mainmenu" then
+		update_knife()
+		update_mainmenu()
+	elseif gstate=="playing" then
+	 timer_playing+=1
+	 update_start_countdown()
+		update_lvlup()
+		update_gover()
+		update_knife()
+		update_pk()
+		update_candle_ptcs()
+		update_sparks_ptcs()
+		update_ropes_offset()
+		update_top_panel()
+	end
+	
+	update_fade()
 	update_ptcs()
-	update_candle_ptcs()
+	update_shake()
 	update_txts_displays()
-	update_sparks_ptcs()
-	update_ropes_offset()
-	update_top_panel()
 end
 -->8
 -- variables.
 
+gstate="mainmenu"
 timer=0
+timer_playing=0
 
+
+------------------------
+-- main menu.
+------------------------
+
+mainmenu_timer=0
+mainmenu_pk_cut=false
+mainmenu_play_pk_cut=false
+mainmenu_play_pk_on=false
+
+mainmenu_title_h=10
+mainmenu_title_wave=0
+
+mainmenu_play_timer=-1
 
 ------------------------
 -- levels.
 ------------------------
+
+game_started=false
 
 cur_lvl=nil
 cur_lvl_index=1
@@ -149,7 +187,7 @@ knf_input_pressed=false
 
 knf_spr_seq={97,99,101,103}
 knf_spr_timer=-1
-knf_px,knf_py=0,57
+knf_px,knf_py=0,87
 knf_dir,knf_speed=1,14
 knf_anim_on=false
 knf_hit_smth=false
@@ -170,6 +208,13 @@ cut_pk,cut_bad_pk,max_combo=0,0,0
 ------------------------
 -- gui.
 ------------------------
+
+fade_perc,fade_target_perc=0,0
+fade_timer=0
+
+start_msg_timer=-1
+start_msg_dur=30
+start_msg_col_seq={1,2,8,9,7,7,7,7,8,5,2,1}
 
 lvlup_timer=-1
 lvlup_dur=30
@@ -209,6 +254,11 @@ fire_anim_seq={11,12,43,44,75,76}
 ------------------------
 -- levels.
 ------------------------
+
+function init_playing_state()
+	gstate="playing"
+	fade_target_perc=0
+end
 
 function next_lvl()
 	cur_lvl_index+=1
@@ -391,6 +441,79 @@ function add_knf_throw_ptc()
 	end
 end
 
+function add_main_credits_ptc(_y)
+ local alpha
+ 
+ -- smoke particles.
+ for s=1,8+flr(rnd(7)) do
+	 alpha=rnd()
+		add_ptc(60,_y,
+		 sin(alpha)*7+rnd(2),
+		 cos(alpha)*3+rnd(2),
+		 2,5+rnd(5),{2,4,5,1,1},6+rnd(3))
+	end
+end
+
+function add_mainmenu_pk_ptc()
+ local alpha
+ -- smoke particles.
+ for s=1,20+flr(rnd(10)) do
+	 alpha=rnd()
+		add_ptc(56,40,
+		 sin(alpha)*15+rnd(8),
+		 cos(alpha)*15+rnd(8),
+		 2,10+rnd(25),{7,8,9,9,2,5,1},8+rnd(4))
+	end
+ 
+ -- chunks.
+ for p=0,8+flr(rnd(4)) do
+	 alpha=rnd()
+	 add_ptc(56,40,
+	 	sin(alpha)*(2+rnd(4)),
+	 	cos(alpha)*(2+rnd(5)),
+	 	1,24,{65,66,67,81,82,83})
+ end
+ 
+ -- pixel particles.
+ for p=0,50+rnd(20) do
+ 	alpha=rnd()
+ 	add_ptc(56,40,
+ 		sin(alpha)*(3+rnd(7)),
+ 		cos(alpha)*(3+rnd(7)),
+ 		0,24,{4,9,10,4})
+ end
+end
+
+function add_mainmenu_play_pk_ptc()
+ local alpha
+ -- smoke particles.
+ for s=1,20+flr(rnd(10)) do
+	 alpha=rnd()
+		add_ptc(56,94,
+		 sin(alpha)*12+rnd(6),
+		 cos(alpha)*12+rnd(6),
+		 2,8+rnd(20),{7,8,9,9,2,5,1},6+rnd(3))
+	end
+ 
+ -- chunks.
+ for p=0,6+flr(rnd(3)) do
+	 alpha=rnd()
+	 add_ptc(56,94,
+	 	sin(alpha)*(2+rnd(3)),
+	 	cos(alpha)*(2+rnd(4)),
+	 	1,18,{65,66,67,81,82,83})
+ end
+ 
+ -- pixel particles.
+ for p=0,30+rnd(15) do
+ 	alpha=rnd()
+ 	add_ptc(56,94,
+ 		sin(alpha)*(3+rnd(7)),
+ 		cos(alpha)*(3+rnd(7)),
+ 		0,24,{4,9,10,4})
+ end
+end
+
 function add_pk_cut_ptc()
  local alpha
  
@@ -512,14 +635,17 @@ function draw_pk_light()
  if lvlup_timer>-1 then
 		return
 	end
+
+	local light_px=pk_px+8
+	local light_py=pk_py+8
 	
 	fillp(░)
-	circfill(pk_px+8,pk_py+8,20,1)
- circfill(pk_px+8,pk_py+8,14,0)
+	circfill(light_px,light_py,20,1)
+ circfill(light_px,light_py,14,0)
  fillp(▒)
- circfill(pk_px+8,pk_py+8,14,1)
+ circfill(light_px,light_py,14,1)
 	fillp(◆)
-	circfill(pk_px+8,pk_py+8,10,1)
+	circfill(light_px,light_py,10,1)
 	fillp()
 end
 
@@ -530,8 +656,9 @@ end
 
 function draw_knife()
 	if not knf_anim_on then
-		print("❎",knf_px+4,knf_py-11+cos(timer/12),1)
-		print("❎",knf_px+4,knf_py-12+cos(timer/12),13)
+		local x_input_h=knf_py-11+cos(timer/12)
+		print("❎",knf_px+4,x_input_h,1)
+		print("❎",knf_px+4,x_input_h-1,13)
 	end
 	
 	local knf_spr=101
@@ -549,8 +676,8 @@ function draw_knife_clamps()
 	local perc_tomin=flr(dist_tomin/(knf_maxh-knf_minh)*#knf_borders_col_seq)
 	local perc_tomax=flr(dist_tomax/(knf_maxh-knf_minh)*#knf_borders_col_seq)
 	
-	perc_tomin=mid(1,perc_tomin,#knf_borders_col_seq)
-	perc_tomax=mid(1,perc_tomax,#knf_borders_col_seq)
+	perc_tomin=max(1,perc_tomin)
+	perc_tomax=max(1,perc_tomax)
 	
 	for i=0,64 do
 		pset(i*4,knf_minh,knf_borders_col_seq[perc_tomin])
@@ -664,6 +791,72 @@ function draw_gui()
 		 26,17,out_quad(lvlup_perc))
 		print("level up!",47,lvlup_h,lvlup_col)
 	end
+	
+	-- start msg popup.
+	if start_msg_timer>-1 then
+		local start_msg_perc=1-start_msg_timer/start_msg_dur
+		local start_msg_col=start_msg_col_seq[1+flr(start_msg_perc*#start_msg_col_seq)]
+		
+		local start_msg_h=lerp(
+		 26,17,out_quad(start_msg_perc))
+		print("slash!",54,start_msg_h,start_msg_col)
+	end
+end
+
+function draw_mainmenu()
+	if not mainmenu_pk_cut then
+		fillp(░)
+		circfill(64,36,20,1)
+	 circfill(64,36,14,0)
+	 fillp(▒)
+	 circfill(64,36,14,1)
+		fillp(◆)
+		circfill(64,36,8,1)
+		fillp()
+	 spr_outline(1,7,56,28,2,2)
+ else
+ 	-- actual main menu.
+  mainmenu_title_h+=sin(mainmenu_title_wave)*0.6
+  mainmenu_title_wave+=0.03
+ 	spr_outline(128,0,26,mainmenu_title_h,10,7)
+		spr(get_table_item_mod(fire_anim_seq,3,0),77,mainmenu_title_h+1,1,2)
+ 
+ 	if mainmenu_timer>48 then
+ 		-- credits.
+ 		local credits_col=2
+ 		
+ 		if mainmenu_timer==49 then
+ 			add_main_credits_ptc(71)
+ 		end
+		 if mainmenu_timer<52 then
+			 credits_col=1
+			end
+ 		print("by robin six",41,68-credits_col,credits_col)
+ 	 if mainmenu_timer>60 then
+				credits_col=2
+ 	 	if mainmenu_timer==61 then
+ 				add_main_credits_ptc(78)
+ 			end
+ 			if mainmenu_timer<64 then
+ 			 credits_col=1
+ 			end
+ 	 	print("sixrobin.itch.io",33,75-credits_col,credits_col)
+ 		end
+ 	end
+ 	
+ 	-- play pumpkin.
+ 	if mainmenu_play_pk_on
+ 	and not mainmenu_play_pk_cut
+ 	then
+			fillp(░)
+			circfill(64,103,17,1)
+		 circfill(64,103,12,0)
+		 fillp(▒)
+		 circfill(64,103,12,1)
+			fillp()
+		 spr_outline(33,7,56,94,2,2)
+ 	end 
+ end
 end
 
 
@@ -760,7 +953,7 @@ end
 
 function init_lvls()
  add(lvls,lvl_1)
- --add(lvls,lvl_1) -- tmp.
+ add(lvls,lvl_1) -- tmp.
 	--add(lvls,lvl_2)
 	--add(lvls,lvl_3)
 	--add(lvls,lvl_4)
@@ -793,9 +986,15 @@ function update_gover()
 	 if gover_timer<1 then
 	 	add_gover_msg_ptcs()
 	 end
-	 
 	 gover_timer+=1
 	 
+	 if gover_timer>120 then
+	 	-- do it a function.
+	 	if btn(❎) then
+	 		gstate="mainmenu"
+	 		shake_counter=0
+	 	end
+	 end
 	end
 end
 
@@ -838,13 +1037,18 @@ function update_knife_height()
 		end
 	end
 	
-	knf_py=mid(knf_minh,knf_py+knf_vely,knf_maxh)
+	if gstate=="playing" then
+		knf_py=mid(knf_minh,knf_py+knf_vely,knf_maxh)
+	elseif gstate=="mainmenu" then
+		knf_py=mid(16,knf_py+knf_vely,120)
+	end
 end
 
 function update_knife_throw()
 	if not knf_anim_on
 	and not knf_input_pressed
-	and btn(❎) then
+	and btn(❎)
+	then
 		knf_vely=0
 		knf_anim_on=true
 		knf_hit_smth=false
@@ -854,10 +1058,18 @@ function update_knife_throw()
 		add_knf_throw_ptc()
 		sfx(0)
 	end
+	
 	knf_input_pressed=btn(❎)
 end
 
 function update_knife()
+	-- block input while fading in.
+	if gstate=="mainmenu"
+	and not mainmenu_play_pk_cut
+	and fade_perc!=0 then
+	 return
+	end
+
 	update_knife_height()
 	update_knife_throw()
 
@@ -873,11 +1085,7 @@ function update_knife()
 	-- check walls.
 	if knf_px>=112 or knf_px<=0 then
 		-- land.
-		if knf_px>=112 then
-			knf_px=112
-		else
-			knf_px=0
-		end
+		knf_px=mid(0,knf_px,112)
 		
 		knf_anim_on=false
 		knf_dir*=-1
@@ -904,45 +1112,67 @@ function update_knife()
 	end
 
 	-- check pumpkin.
-	if knf_anim_on
-	and not last_lvl_done
-	and lvlup_timer==-1
-	and dist_sqr(pk_px+8,pk_py+12,knf_px+8,knf_py)<225
-	then
-		-- pumpkin cut.
-		knf_hit_smth=true
-		if pk_isbad then
-			-- bad pk cut.
-			cut_bad_pk+=1
-			combo=0
-			score=max(score-cur_lvl.malus*10)
-			
-			add_txt_display("-"..tostr(cur_lvl.malus),
-				pk_px,pk_py,pk_px,pk_py-15,{7,8,2},12)
+	if knf_anim_on then
+		-- knife throw in game.
+		if gstate=="playing" then
+			if not last_lvl_done
+			and lvlup_timer==-1
+			and dist_sqr(pk_px+8,pk_py+12,knf_px+8,knf_py)<225
+			then
+				-- pumpkin cut.
+				knf_hit_smth=true
+				if pk_isbad then
+					-- bad pk cut.
+					cut_bad_pk+=1
+					combo=0
+					score=max(score-cur_lvl.malus*10)
+					
+					add_txt_display("-"..tostr(cur_lvl.malus),
+						pk_px,pk_py,pk_px,pk_py-15,{7,8,2},12)
+						
+					set_shake(0.15)
+					add_bad_pk_cut_ptc()
+					sfx(2)
+				else
+					-- good pk cut.
+					cut_pk+=1
+					combo+=1
+					max_combo=max(combo,max_combo)
+					score+=combo
 				
-			set_shake(0.15)
-			add_bad_pk_cut_ptc()
-			sfx(2)
-			
-		else
-			-- good pk cut.
-			cut_pk+=1
-			combo+=1
-			if combo>max_combo then
-				max_combo=combo
+					add_txt_display("+"..combo,
+						pk_px,pk_py,pk_px,pk_py-15,{7,7,10,8,1},12)
+					
+					set_shake(0.08)
+					add_pk_cut_ptc()
+					sfx(1)
+				end
+				
+				knf_hitpause=1
+				next_pk()
 			end
-			score+=combo
 		
-			add_txt_display("+"..combo,
-				pk_px,pk_py,pk_px,pk_py-15,{7,7,10,8,1},12)
-			
-			set_shake(0.08)
-			add_pk_cut_ptc()
-			sfx(1)
+		-- knife throw in menu.
+		elseif gstate=="mainmenu" then
+			if not mainmenu_pk_cut
+			and dist_sqr(56,30,knf_px+8,knf_py)<225
+			then
+			 add_mainmenu_pk_ptc()
+			 set_shake(0.15)
+			 mainmenu_pk_cut=true
+			end
+			if mainmenu_play_pk_on
+			and not mainmenu_play_pk_cut
+			and dist_sqr(56,103,knf_px+8,knf_py)<225
+			then
+			 -- play.
+			 mainmenu_play_pk_cut=true
+			 add_mainmenu_play_pk_ptc()
+			 set_shake(0.15)
+			 mainmenu_play_pk_cut=true
+			 mainmenu_play_timer=0
+			end
 		end
-		
-		knf_hitpause=1
-		next_pk()
 	end
 end
 
@@ -953,6 +1183,7 @@ end
 
 function update_pk()
 	if last_lvl_done
+	or not game_started
 	or lvlup_timer>-1 then
 		return
 	end
@@ -983,6 +1214,56 @@ end
 ------------------------
 -- gui.
 ------------------------
+
+function update_fade()
+	if fade_perc==fade_target_perc then
+		fading=false
+		return
+	end
+	
+	fading=true
+	fade_timer+=1
+ if fade_timer>2 then
+ 	fade_perc=mid(0,fade_perc+0.2*sgn(fade_target_perc-fade_perc),1)
+ 	fade_timer=0
+ end
+end
+
+function update_start_countdown()
+	-- start message popup.
+ if timer_playing>24 then
+ 	if start_msg_timer==-1
+  and timer_playing==25 then
+ 		start_msg_timer=start_msg_dur
+ 		add_lvlup_ptcs()
+ 	elseif start_msg_timer>-1 then
+			start_msg_timer-=1
+		end
+	end
+	
+	game_started=timer_playing>92
+end
+
+function update_mainmenu()
+	if mainmenu_pk_cut then
+	 mainmenu_timer+=1
+	 mainmenu_play_pk_on=mainmenu_timer>100
+	end
+	
+	if mainmenu_play_timer>-1 then
+		mainmenu_play_timer+=1
+		
+		if mainmenu_play_timer>24
+		and fade_target_perc!=1
+		then
+		 fade_target_perc=1
+		end
+		
+		if mainmenu_play_timer>54 then
+			init_playing_state()
+		end
+	end
+end
 
 function update_top_panel()
 	if not last_lvl_done then
@@ -1143,9 +1424,11 @@ function rnd_vector_in_cone(_angle,_wideness)
 end
 
 function spr_outline(_n,_col,_x,_y,_w,_h,_flip_x,_flip_y)
- -- set palette to color.
- for c=1,15 do
-  pal(c,_col)
+ if fade_perc==0 then
+	 -- set palette to color.
+	 for c=1,15 do
+	  pal(c,_col)
+	 end
  end
  
  -- draw outline.
@@ -1164,12 +1447,33 @@ function spr_outline(_n,_col,_x,_y,_w,_h,_flip_x,_flip_y)
  spr(_n,_x,_y,_w,_h,_flip_x,_flip_y)
  -- reset palette.
  pal()
+ 
+ fade_pal(fade_perc)
+ 
  -- draw actual sprite.
  spr(_n,_x,_y,_w,_h,_flip_x,_flip_y)	
 end
 
 function get_table_item_mod(_table,_rate,_offset)
 	return _table[flr((timer+_offset)/_rate)%#_table+1]
+end
+
+function fade_pal(_p)
+	local p=flr(mid(0,_p,1)*100)
+	local k_max,col
+	local d_pal={
+	 0,1,1,2,1,13,6,4,4,9,3,16,1,13,14}
+	 
+	for j=1,15 do
+		col=j
+		k_max=(p+(j*1.46))/22
+		
+		for k=1,k_max do
+			col=d_pal[col]
+		end
+		
+		pal(j,col)
+	end
 end
 __gfx__
 0000000000000033000000000000003300000000ccccccccccccccccd0d00d00d0060006d006d0dd0dd0d0000000000000000000000000000000000000000000
