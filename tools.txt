@@ -1,0 +1,80 @@
+function dist_sqr(_ax,_ay,_bx,_by)
+	return (_ax-_bx)*(_ax-_bx)+(_ay-_by)*(_ay-_by)
+end
+
+
+
+function lerp(_a,_b,_t)
+	return _a*(1-_t)+_b*_t
+end
+
+
+
+function out_quad(_t)
+	return _t*(2-_t)
+end
+
+
+function spr_outline(_n,_col,_x,_y,_w,_h,_flip_x,_flip_y)
+ if fade_perc==0 then
+	 -- set palette to color.
+	 for c=1,15 do
+	  pal(c,_col)
+	 end
+ end
+ 
+ -- draw outline.
+ for x=-1,1 do
+  for y=-1,1 do
+   spr(_n,_x+x,_y+y,_w,_h,_flip_x,_flip_y)
+  end
+ end
+ 
+ -- set palette to fill color.
+ for c=1,15 do
+  pal(c,_fillcol)
+ end
+ 
+ -- draw fill.
+ spr(_n,_x,_y,_w,_h,_flip_x,_flip_y)
+ -- reset palette.
+ pal()
+ 
+ fade_pal(fade_perc)
+ 
+ -- draw actual sprite.
+ spr(_n,_x,_y,_w,_h,_flip_x,_flip_y)	
+end
+
+
+
+function get_table_item_mod(_table,_rate,_offset)
+	return _table[flr((timer+_offset)/_rate)%#_table+1]
+end
+
+
+
+function print_shadow(_txt,_x,_y,_col,_scol)
+	print(_txt,_x,_y+1,_scol)
+	print(_txt,_x,_y,_col)
+end
+
+
+
+function fade_pal(_p)
+	local p=flr(mid(0,_p,1)*100)
+	local k_max,col
+	local d_pal={
+	 0,1,1,2,1,13,6,4,4,9,3,16,1,13,14}
+	 
+	for j=1,15 do
+		col=j
+		k_max=(p+(j*1.46))/22
+		
+		for k=1,k_max do
+			col=d_pal[col]
+		end
+		
+		pal(j,col)
+	end
+end
