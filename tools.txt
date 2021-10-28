@@ -78,3 +78,58 @@ function fade_pal(_p)
 		pal(j,col)
 	end
 end
+
+
+
+
+
+
+
+
+-- screen fade
+
+fade_pal(fade_perc)
+
+function update_fade()
+ fading=fade_perc!=fade_target_perc
+	if fading then
+		fade_timer+=1
+	 if fade_timer>2 then
+	 	fade_perc=mid(0,fade_perc+0.2*sgn(fade_target_perc-fade_perc),1)
+	 	fade_timer=0
+	 end
+	end
+end
+
+function fade_pal(_p)
+	local p=flr(mid(0,_p,1)*100)
+	local k_max,col
+	local d_pal={
+	 0,1,1,2,1,13,6,4,4,9,3,16,1,13,14}
+	 
+	for j=1,15 do
+		col=j
+		k_max=(p+(j*1.46))/22
+		
+		for k=1,k_max do
+			col=d_pal[col]
+		end
+		
+		pal(j,col)
+	end
+end
+
+
+
+
+-- piracy check
+
+	domain=stat(102)
+	if domain!=0
+	and domain!="v6p9d9t4.ssl.hwcdn.net" -- itchio
+	and domain!="www.lexaloffle.com"
+	then
+		pirated=true
+	else
+		cartdata("pumpkin_slasher")
+	end
