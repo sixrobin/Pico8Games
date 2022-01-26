@@ -1,0 +1,1431 @@
+============================================================================================
+	
+	PICO-8 v0.2.3
+	https://www.pico-8.com
+	(c) Copyright 2014-2021 Lexaloffle Games LLP
+	Author: Joseph White // hey@lexaloffle.com
+
+	PICO-8 is built with:
+		SDL2 http://www.libsdl.org
+		Lua 5.2 http://www.lua.org  // see license.txt
+		ws281x by jgarff            // see license.txt
+		GIFLIB http://giflib.sourceforge.net/
+		WiringPi http://wiringpi.com/
+		libb64 by Chris Venter
+		miniz by Rich Geldreich
+
+============================================================================================
+
+	For the full PICO-8 User Manual, please visit:
+
+	https://www.lexaloffle.com/pico-8.php?page=resources
+
+============================================================================================
+
+
+:: Keys
+
+	Toggle Fullscreen: Alt+Enter 
+	Quit: Alt+F4 or command-Q
+	Reload/Run/Restart cart: Ctrl+R
+	Quick-Save: Ctrl+S
+	Mute/Unmute: Ctrl+M
+	Player 1 defaults: Cursors + ZX / NM / CV
+	Player 2 defaults: SDFE + tab,Q / shift A
+	Enter or P for pause menu (while running)
+	// use KEYCONFIG to change the defaults.
+	
+
+:: Hello World
+
+	After PICO-8 boots, try typing some of these commands followed by enter:
+
+		PRINT("HELLO WORLD")
+		RECTFILL(80,80,120,100,12)
+		CIRCFILL(70,90,20,14)
+		FOR I=1,4 DO PRINT(I) END
+	
+	(Note: PICO-8 only displays upper-case characters -- just type normally without capslock!)
+	
+	You can build up an interactive program by using commands like this in the code editing
+	mode along with two special callback functions _UPDATE and _DRAW. For example, the following
+	program allows you to move a circle around with the cursor keys. Press Esc to switch to
+	the code editor and type or copy & paste the following code:
+
+		X = 64  Y = 64
+		FUNCTION _UPDATE()
+		 IF (BTN(0)) THEN X=X-1 END
+		 IF (BTN(1)) THEN X=X+1 END
+		 IF (BTN(2)) THEN Y=Y-1 END
+		 IF (BTN(3)) THEN Y=Y+1 END
+		END
+
+		FUNCTION _DRAW()
+		 CLS(5)
+		 CIRCFILL(X,Y,7,14)
+		END
+
+	Now press Esc to return to the console and type RUN (or press CTRL-R) to see it in action.
+	Please refer to the demo cartridges for more complex programs (type INSTALL_DEMOS).
+	
+	If you want to store your program for later, use the SAVE command:
+	
+	> SAVE PINKCIRC
+	
+	And to load it again:
+	
+	> LOAD PINKCIRC
+	
+
+:: Example Cartridges
+
+	These cartridges are included with PICO-8 and can be installed by typing:
+	
+	INSTALL_DEMOS
+	CD DEMOS
+	LS
+	
+	HELLO      Greetings from PICO-8
+	API        Demonstrates most PICO-8 functions
+	JELPI      Platform game demo w/ 2p support 
+	CAST       2.5D Raycaster demo
+	DRIPPY     Draw a drippy squiggle
+	WANDER     Simple walking simulator
+	COLLIDE    Example wall and actor collisions
+
+	To run a cartridge, open PICO-8 and type:
+
+	LOAD JELPI
+	RUN
+	
+	Press escape to stop the program, and once more to enter editing mode.
+
+	A small collection of BBS carts can also be installed to /GAMES with: 
+
+	INSTALL_GAMES
+
+
+
+:: File System
+
+	These commands can be used to manage files and directories (folders):
+	
+	LS          list the current directory
+	CD BLAH     change directory
+	CD ..       go up a directory
+	CD /        change back to top directory (on PICO-8's virtual drive)
+	MKDIR BLAH  make a directory
+	FOLDER      open the current directory in the host operating system's file browser
+
+	LOAD BLAH  load a cart from the current directory
+	SAVE BLAH  save a cart to the current directory
+	
+	If you want to move files around, duplicate them or delete them, use the FOLDER 
+	command and do it in the host operating system.
+	
+	The default location for PICO-8's drive is:
+	
+	Windows: C:/Users/Yourname/AppData/Roaming/pico-8/carts
+	OSX: /Users/Yourname/Library/Application Support/pico-8/carts
+	Linux: ~/.lexaloffle/pico-8/carts
+
+	You can change this and other settings in pico-8/config.txt
+
+
+
+:: Using an External Text Editor
+
+	It is possible to edit .p8 files directly with a separate text editor. Using CTRL-R to run a
+	cartridge will automatically re-load the file if:
+	
+		1. There are no unsaved changes in the PICO-8 editors, AND
+		2. The file differs in content from the last loaded version
+		
+	If there are changes to both the cart on disk and in the editor, a notification is displayed:
+	
+		DIDN'T RELOAD; UNSAVED CHANGES
+	
+	Alternatively, .lua text files can be modifed in a separate editor and then included into the 
+	cartridge's code each time it is run using #INCLUDE (in the desired code location):
+
+		#INCLUDE YOURFILE.LUA
+
+
+:: Backups
+
+	If you quit without saving changes, or overwrite an existing file, a backup of the cartridge 
+	is saved to {appdata}/pico-8/backup. An extra copy of the current cartridge can also be saved
+	to the same folder by typing BACKUP. To open the backups folder, type: FOLDER BACKUPS
+
+
+:: Configuration
+
+	:: config.txt
+	
+		You can find some settings in config.txt. Edit the file when PICO-8 is not running.
+	
+		Windows: C:/Users/Yourname/AppData/Roaming/pico-8/config.txt
+		OSX: /Users/Yourname/Library/Application Support/pico-8/config.txt
+		Linux: ~/.lexaloffle/pico-8/config.txt
+
+		Use the -home switch (below) to use a different path to store config.txt and other data.
+		
+		Some settings can be changed while running PICO-8 by typing CONFIG SETTING VALUE.
+		(type CONFIG by itself for a list)
+
+
+	:: Commandline parameters
+	
+		// note: these override settings found in config.txt
+		
+		pico-8 [switches] [filename.p8]
+		
+		-width n                 set the window width 
+		-height n                set the window height 
+		-windowed n              set windowed mode off (0) or on (1)
+		-volume n                set audio volume 0..256
+		-joystick n              joystick controls starts at player n (0..7)
+		-pixel_perfect n         1 for unfiltered screen stretching at integer scales (on by default)
+		-preblit_scale n         scale the display by n before blitting to screen (useful with -pixel_perfect 0)
+		-draw_rect x,y,w,h       absolute window coordinates and size to draw pico-8's screen 
+		-run filename            load and run a cartridge
+		-x filename              execute a PICO-8 cart headless and then quit (experimental!)
+		-export param_str        run EXPORT command in headless mode and exit (see notes under export)
+		-p param_str             pass a parameter string to the specified cartridge
+		-splore                  boot in splore mode
+		-home path               set the path to store config.txt and other user data files
+		-root_path path          set the path to store cartridge files
+		-desktop path            set a location for screenshots and gifs to be saved
+		-screenshot_scale n      scale of screenshots.  default: 3 (368x368 pixels)
+		-gif_scale n             scale of gif captures. default: 2 (256x256 pixels)
+		-gif_len n               set the maximum gif length in seconds (1..120)
+		-gui_theme n             use 1 for a higher contrast editor colour scheme
+		-timeout n               how many seconds to wait before downloads timeout (default: 30)
+		-software_blit n         use software blitting mode off (0) or on (1)
+		-foreground_sleep_ms n   how many milliseconds to sleep between frames.
+		-background_sleep_ms n   how many milliseconds to sleep between frames when running in background
+		-accept_future n         1 to allow loading cartridges made with future versions of PICO-8
+		-global_api n            1 to leave api functions in global scope (useful for debugging)
+
+
+:: Controller Setup
+
+	PICO-8 uses the SDL2 controller configuration scheme. It will detect common controllers
+	on startup and also looks for custom mappings in sdl_controllers.txt in the same directory 
+	as config.txt. sdl_controllers.txt has one mapping per line.
+
+	To generate a custom mapping string for your controller, use either the controllermap
+	program that comes with SDL2, or try http://www.generalarcade.com/gamepadtool/
+
+	To find out the id of your controller as it is detected by SDL2, search for "joysticks"
+	or "Mapping" in log.txt after running PICO-8. This id may vary under different operating
+	systems. See: https://www.lexaloffle.com/bbs/?tid=32130
+	
+	To set up which keyboard keys trigger joystick buttons presses, use KEYCONFIG.
+
+
+:: Screenshots, Videos and Cartridge Labels
+
+	While a cartridge is running use:
+
+		CTRL-6 Save a screenshot to desktop
+		CTRL-7 Capture cartridge label image
+		CTRL-8 Start recording a video
+		CTRL-9 Save GIF video to desktop (8 seconds by default)
+	
+	You can save a video at any time (it is always recording); CTRL-8 simply resets the video
+	starting point. To record more than 8 seconds, use the CONFIG command (maximum: 120)
+
+		CONFIG GIF_LEN 60
+
+	If you would like the recording to reset every time (to create a non-overlapping sequence), use:
+
+		CONFIG GIF_RESET_MODE 1
+
+	The gif format can not match 30fps exactly, so PICO-8 instead uses the closest match: 33.3fps.
+
+	If you have trouble saving to the desktop, try configuring an alternative desktop path in config.txt
+	
+
+
+:: Programming Guide
+
+	For more details and API Reference, please find the PICO-8 User Manual here:
+
+	https://www.lexaloffle.com/pico-8.php?page=resources
+
+
+--------------------------------------------------------------------------------------------
+	VERSION HISTORY
+--------------------------------------------------------------------------------------------
+
+	v0.2.3
+
+		Added: Lucky draw list in splore -- gives a random selection of carts
+		Added: load/save carts in .p8.rom format (raw binary 32k block)
+		Added: tostr(), tonum() take format_flags parameter to convert to and from 32-bit signed ints
+		Added: ord(str, pos, num) returns num results starting from character at pos (similar to peek)
+		Added: FOLDER takes an optional parameter to open other host directories: BACKUPS | DESKTOP | CONFIG | BBS
+		Added: Live character / token count of selected text shown at bottom right of code editor
+		Changed: Removed collaboration list from splore (can still search for sub:collab)
+		Changed: 0x808 audio has a slight lpf filter on it by default // turn off by setting bit 0x20 at 0x5f36
+		Changed: tonum(boolean_value) returns 1 or 0 instead of nil
+		Changed: cursor CR x position set only by print(str,x,y) or cursor(), but not by print(str) (0x5f24)
+		Changed: character wrap is on by default when using print(str)
+		Changed: force-pause-menu hold duration is 500ms instead of 300ms to prevent accidentally triggering it
+		Changed: default gif length for new install is 16 seconds
+		Changed: ? shorthand can be used anywhere on a line e.g.  if (true) ?"yes"
+		Changed: allow while/if shorthand with no statement, using colon separator: WHILE(BTN()==0);
+		Changed: added warning to fullscreen_method 2 in config.txt (gives erratic behaviour under some drivers)
+		Changed: cheaper OP_MOVE, OP_UNM lua vm instructions so that e.g. "local a=0-b" is not faster than "local a=-b"
+		Fixed: fget(n) returns junk when n is out of range (0..255); should return 0 in that case
+		Fixed: dropped .PNG files not detected as images when filename uses uppercase extension
+		Fixed: line()/tline() illegal writes caused by faulty clipping when (x1-x0) or (y1-y0) >= 0x8000
+		Fixed: -accept_future 1 only worked with .p8.png files; now also applies to .p8
+		Fixed: ?"\a7f" does not play f (happens only when f is the first note)
+		Fixed: abs(0x8000) return 0x0.0001 (should be 0x7fff.ffff)
+		Fixed: parameter string (stat(6)) is dropped when passed via RUN command
+		Fixed: preprocessing of form: "x += x<0 and -1 or 1" broken for operators <, >
+		Fixed: tab not accepted as whitespace for some preprocessor operations
+		Fixed: stat(1) wraps around when cpu is >= 2.0 (regression in 0.2.2)
+		Fixed: pressing SHIFT+ENTER on "local function foo()" or after "if (..) else" doesn't insert "end"
+		Fixed: pal() does not reset secondary palette to system default
+		Fixed: 0x808 audio does not respect pausing / volume / is not recorded with extcmd("audio_rec")
+		Fixed: 'h' pressed in sprite editor toggles hex mode in map editor
+		Fixed: After pressing shift-tab to toggle 128x128 map view, active draw area is still only 128x112
+		Fixed: Attempt to navigate to non-existant tab after running: function _update60() _update60=nil end
+		Fixed: stat(101) not returning cart id when running from BBS web player
+		Fixed: print() wrapping + scrolling; e.g. from commandline: while(true) print(chr(254+rnd(2)).."\0")
+		Fixed: integer divide assignment operator (\=) costs 2 tokens instead of 1 
+
+	v0.2.2c
+
+		Fixed: ?"\ac0" starts from d#0 instead of c0 (again -- 0.2.2b was still broken)
+		Fixed: splore local directory navigation fails when using a relative home path set with -home 
+		Fixed: export .lua.png only shows the first 2730 lines
+
+
+	v0.2.2b
+
+		Added: export foo.lua.png to get an image of the cartridge's source code
+		Added: Pause menu can be forced to appear by holding down pause for 300ms (even if program blocks it)
+		Added: extcmd("set_filename","foo") -- set the filename of the next screenshot or gif (can include %d)
+		Added: extcmd("set_title","foo") -- set window title (useful for exported binaries)
+		Added: Can toggle punyfont mode at command prompt w/ ctrl+p (useful for inspecting puny variable names!)
+		Changed: Default filename is /untitled.p8 instead of no filename (auto-increments to untitled_1.p8 etc.)
+		Changed: circ/oval that are not visible cost almost nothing, including circles that contain clipping region
+		Changed: filled circles/ovals that contain clipping region cost the same as the equivalent rectfill
+		Changed: shift+enter in code editor only auto-completes block for DO, THEN, REPEAT or FUNCTION 
+		Fixed: ?"\ac0" starts from d#0 instead of c0
+		Fixed: preprocessor regression when using string at end of ..= statement: if (true) then a..="b" end
+		Fixed: pressing L / R in paused menu is registered by running program after closing menu
+		Fixed: printing text in tall mode (?"\^ttall") via commandline can chop off bottom line before scrolling
+		Fixed: drag-select text with cursor at bottom or top of screen scrolls too fast
+		Fixed: spurious stat(0) results when using yield() to exit frame instead of flip()
+		Fixed: line()/tline() sometimes draws pixels on opposite side of screen (0.2.2 regression)
+		Fixed: line()/tline() fails to draw lines that have x or y coordinates > 32767 pixels apart 
+		Fixed: can peek() more than 8192 values in single call
+		Fixed: large fill circles (> radius 900) render incorrectly close to vertical center (32-bit builds, web)
+		Fixed: even-widthed filled ovals with midpoint < 0 is drawn off by 1
+		Fixed: black pixels in gif / map export not completely black
+		Fixed: map and spritesheet exporters do not respect current display palette and 0x5F36:0x8 (draw spr 0)
+		Fixed: code editor: cursor position off by one when selecting character after glyph (0.2.2 regression)
+		Fixed: code editor: tab names don't show up when 100% punyfont
+		Fixed: import spritesheet.png failing under MacOS (0.2.2 regression)
+		Fixed: export single sfx to .wav crashes when contains sfx instrument references
+
+
+	v0.2.2
+
+		Added: SFX filters: noiz (white noise for inst 6), buzz, detune (flange/overtone), reverb, dampen (lpf)
+		Added: SFX length (leave the second loop value at 0 to use). Can be >= 32.
+		Added: P8SCII control characters when using print() -- can adjust colour and cursor position etc.
+		Added: User-defined font at 0x5600, accessible via control character \014
+		Added: poke(addr, val0, val1, val2 .. valn) -- same for poke2, poke4
+		Added: can peek multiple values:  a,b,c = peek(addr, 3)  -- same for peek2, peek4
+		Added: Locked mouse pointer // poke(0x5f2d, 0x5) and then stat(38),stat(39) to read
+		Added: right click in sfx pitch mode to grab the instrument of that note
+		Added: IMPORT command can specify target location in pixels: IMPORT FOO.PNG -X 16 -Y 32 
+		Added: IMPORT -S to shrink the imported image (e.g. -S 3 means shrink from 384x384 -> 128x128) 
+		Added: ctrl-c at empty command prompt to copy the most recent error message
+		Added: extcmd("screen",0,1) / extcmd("video",0,1) saves files in same path as cart / exported executable or app.
+		Added: set bit POKE(0x5F36, 0x8) to treat sprite 0 as opaque when drawn by map(), tline()
+		Added: shift-tab in gfx/map editor for full-fullscreen mode (with no red menu bars)
+		Added: extcmd("rec_frames") to record each gif frame only when flip() is called regardless of rendering speed
+		Added: extcmd("folder") to open the folder on the host operating system (where printf, extcmd saves files to)
+		Added: custom menu callbacks can optionally leave the pause menu open, and can read LEFT and RIGHT button presses
+		Added: ctrl-h hex mode in map / gfx views (displays current sprite in hex, and shows map tile values)
+		Added: export map as a single image with export foo.map.png
+		Added: @weeble's gamepad improvements to the default html shell (dpad layout detection, better mapping / hotplugging)
+		Added: stack trace on bad memory access e.g. poke(-1,0)
+		Added: fillp can now be applied to sprite drawing (spr / sspr / map / tline), using colours from the secondary palette
+		Improved: General optimisation pass; heavy carts use 20~30% less host cpu
+		Changed: Most api functions are local by default for performance. use "pico8 -global_api 1" if needed for debugging.
+		Changed: unpack() now has a non-zero cost but still fairly fast
+		Changed: .. operator has a small cost based on number of characters concatenated
+		Changed: LOADK vm instruction costs 1 cycles (was 2) // otherwise "c=0" costs more than "c=a+b"!
+		Changed: removed function cpu refunds; speed-critical calls to bitwise function should use operator counterparts instead.
+		Changed: Incremental garbage collection each frame for improved performance.
+		Changed: stat(0) performs garbage collection in order to obtain a meaningful result; use stat(99) for raw value
+		Changed: options menu always available from pause menu (used to only be available in web exports)
+		Changed: tostr() returns "" instead of nil
+		Changed: exporting gif/png from web version now creates a pop-up div that can be dismissed
+		Changed: print() from commandline automatically wraps long strings
+		Changed: print() returns the x position of the next character to be printed (can be used to calculate text width)
+		Changed: glyph constants set only when running cartridge, not when running a command from prompt
+		Changed: Using printh from exported carts outputs files in the same folder as the .exe / .app
+		Changed: type() returns nothing instead of causing a runtime error
+		Changed: fill pattern is cleared when program is suspended by default. Use poke(0x5f2e,0x20) to preserve.
+		Changed: reset() resets everything from 0x5f00..0x5f7f, same as when program is initialised (including new random seed)
+		Changed: font tweaks for hiragana, katagana, ampersand characters 
+		Changed: (raspi) separate binaries that support gpio to remove wiringPi dependency and gpio poking-related crashes
+		Fixed: Diagonal lines in editor contain an incorrect step when snapping to -1:1, 1:-1
+		Fixed: rnd(tbl) is not random enough when table has 2 elements   /bbs/?pid=81092#p
+		Fixed: add(tbl) causes runtime error. should have no effect and return nothing
+		Fixed: cursor position in code editor incorrect when changing lines contaning glyphs/tabs
+		Fixed: CONFIG TAB_WIDTH does not take effect until restarting PICO-8
+		Fixed: Selecting sprites from bottom right -> top left and then pasting only pastes a single sprite
+		Fixed: Moving map selection around with cursor keys beyond original selection leaves streaks
+		Fixed: stdout/stdin serial() streams should be binary, not text mode (causes \r chars under Windows)
+		Fixed: printh("hello.txt",fn,true,true) fails to save to desktop when fn has an extention
+		Fixed: IMPORT FOO.PNG using the current sprite location as target instead of 0,0
+		Fixed: tonum behaving differently to parser for string numbers out of range.  e.g. tonum("-0x9000") should be 0x7000
+		Fixed: Exporting the same zip file multiple times creates duplicate file entries
+		Fixed: tline / line clipping // sometimes off by 1px, sometimes incorrectly discarded altogether
+		Fixed: poking values with bit 0x80 to 0x5f28,0x5f30,0x5f3c,0x5f3e clobbers following address
+		Fixed: deli(tbl,nil) behaves the same as deli(tbl) -- should have no effect
+		Fixed: stat(13),stat(15) reporting y coordinates of menu with 0 items
+		Fixed: memory leak when saving gifs (causes web export to crash after a few records)
+		Fixed: print() linefeeds clobber multi-line text printed at bottom of screen
+		Fixed: preprocessor can not handle form: "::_::a+=1" (regression in 0.2.1)
+		Fixed: When split() by group size (e.g. split("ab12",2,false)), last parameter ignored
+		Fixed: partial cstore (len < 0x4300) from splore/export clobbering data outside that range on subsequent reload
+		Fixed: joystick stops responding after unplug and plug back in twice (also happens when some devices sleep / wake up)
+		Fixed: mkdir(nil) crashes
+		Fixed: possible to edit an SFX without the cursor visible (confusing)
+		Fixed: menuitem() callbacks broken when there is no _draw() or _update() defined
+		Fixed: should only be able to call from commandline: cd mkdir install_games keyconfig info
+		Fixed: controller menu (pause->options->controls) does not show custom key settings
+		Fixed: -export failing to find files relative from current path
+		Fixed: -export failing to locate html template path
+		Fixed: binary export storing multicart cart names with path (should be named "dat1.p8", not "dat/dat1.p8")
+		Fixed: pause menu broken when cartridge is launched from splore and run() is called inside first frame 
+		Fixed: text printing does not respect draw palette (was broken in 0.2) // ref: /bbs/?tid=41428
+		Fixed: for backwards compatibility, non-numbery colour parameters should be taken to mean zero
+		Fixed: preprocessor: self assignment with quoted function calls on RHS a+=1+cos"0"
+		Fixed: ctrl-r during pause menu only takes effect after closing menu
+		Fixed: (bug in RC1) pack(...).n is zero
+		Fixed: (bug in RC1) using filters noiz:1, dampen:2, lpf is not applied to melodic instruments (but should be)
+
+
+	v0.2.1b
+
+		Added: split(str,"") splits by single characters
+		Updated: Tower of Archeos 1.1 via INSTALL GAMES
+		Fixed: print(num,x,y) always prints numbers num in hexidecimal
+		Fixed: .p8.png decoder can enter an infinite loop (caused exports to freeze on boot)
+		Fixed: Can't save screenshot/gif when running a BBS cart with illegal characters in title.
+		Fixed: INSTALL_GAMES is broken
+		Fixed: Mouse is broken in HTML exports
+
+
+	v0.2.1
+
+		Added: oval() ovalfill() split()
+		Added: circle drawing tool is now an oval tool (hold shift for circle)
+		Added: hold shift with line tool to snap to 22.5 degree angles from origin (0:1, 1:1, 2:1 gradients)
+		Added: serial() channels for stdin,stdout
+		Added: raw binary and image files dropped in to PICO-8 also become byte streams readable w/ serial()
+		Added: add(tbl, val, index) -- insert val into table at index
+		Added: deli(tbl, index) -- delete element from table by index (index defaults to last element)
+		Added: show progress while exporting binaries (can be slow now that generating zip files)
+		Added: -e to add an extra file to exported binaries zip files // export -e manual.txt foo.bin
+		Added: RESET command to reset the runtime / draw state
+		Added: drag and drop cartridges into PICO-8 window to load them
+		Added: hash stored in .p8.png so that cartridges corrupted by image quantization can show a specific error
+		Added: raw data blocks in compressed code format (useful for storing long binary strings efficiently)
+		Added: clip(x,y,w,h,true): 5th parameter indicates that the clipping region should be clipped by the old one
+		Added: -export switch can be used to convert .p8 files to .p8.png from commandline. // pico8 foo.p8 -export foo.p8.png
+		Added: extcmd("screen",scale) and extcmd("video",scale) to override the default scale (e.g. scale 2 means 256x256)
+		Added: printh(str, filename, overwrite, save_to_desktop) -- 4th parameter to save output file to desktop
+		Changed: add(), del() no longer implemented with Lua snippet; lower cpu cost.
+		Changed: line(),rect() cost the same as rectfill() when drawing equivalent shapes
+		Changed: all drawing operations in sprite editor now observe fill pattern state
+		Changed: numbers can be immediately followed by identifiers (a=1b=2) // lexaloffle.com/bbs/?tid=38038		
+		Changed: Sprite editor shows only active area after shift-selecting sprites
+		Changed: copy/paste in the code editor treats uppercase ascii characters as puny font only when puny mode (ctrl+p) enabled
+		Changed: C0 Controls characters (except for 0x0,0x9,0xa,0xd) encoded in .p8 / clipboard with unicode replacements
+		Changed: stat(4) converts characters to PICO-8 format (P -> puny p,  hiragana unicode -> single character etc.)
+		Changed: serial() returns number of bytes processed (1/8ths included for partial bytes)
+		Changed: IMPORT SPRITESHEET.PNG now uses the current sprite as the destination coordinate instead of 0,0.
+		Changed: Standardized name of the display palette to "display palette" (was sometimes referred to as "screen palette").
+		Changed: tostr() returns nil (used to return "[nil]")
+		Changed: don't need to set bit 0x40 at address 0x5f2c to use secondary palette.
+		Improved: exported binary's data.pod file 90% smaller (~870k -> ~85k)
+		Fixed: pack(...).n is shifted right 16 bits
+		Fixed: ctrl-r doesn't reload external changes for carts which are over compressed code capacity
+		Fixed: false positives when detecting external changes for some older cart versions
+		Fixed: .p8.png carts saved with dense code (compressed size > raw size, including very small carts) stores junk
+		Fixed: error message duplication when loading future version of .p8.png carts
+		Fixed: Illegal colours can enter spritesheet via serach-replace after setting with color()
+		Fixed: Preprocessor: "foo():a().x+=1" "a=b[1]c+=1"
+		Fixed: hex numbers written with punyfont characters breaks syntax high-lighting
+		Fixed: shift+- in sprite editor jumps too far vertically when zoomed in
+		Fixed: clicking a note in sfx editor creates a selection (-> backspace clears without moving rows)
+		Fixed: print()/printh()/stop() doesn't respect __tostring metatable method (regression)
+		Fixed: time() and btnp() speed changes after stopping program, typing a command and then resuming.
+		Fixed: phantom drag & drop events sent to unused music channels causing them to occasionally unmute themselves
+		Fixed: undo after moving sprites in map mode only undoes the changes to the map and not the spritesheet.
+		Fixed: inconsistent token counting for negative or bnot'ed numbers https://www.lexaloffle.com/bbs/?tid=38344
+		Fixed: Crash when INSTALL_GAMES / INSTALL_DEMOS without a writeable disk
+		Fixed: stat(4) (clipboard contents) does not convert unicode to corresponding glyphs
+		Fixed: (MacOS) Using discrete GPU ~ drains battery. Now using integrated GPU when available.
+		Fixed: screensaver is blocked while PICO-8 is running (needed to set SDL_HINT_VIDEO_ALLOW_SCREENSAVER: "1")
+		Fixed: screen glitches after running for 25 days
+		Fixed: (HTML Exports) touch controls not registering when running under iOS from an iframe (e.g. on an itch.io page) 
+		Fixed: (HTML Exports) tap and hold brings up the select menu under iOS
+		Fixed: (HTML Exports) button blocked by canvas when overlapping on small screens
+
+
+
+	v0.2.0i
+
+		Added: pack(), unpack()
+		Changed: bitplane read/write mask only reset after finished running program
+		Fixed: tline() doesn't draw anything when the layers argument is not given
+
+
+	v0.2.0h
+
+		Added: tline() takes an optional layers parameter, similar to map()
+		Added: high bits of 0x5f5e taken as colour read mask, low taken to be colour write mask
+		Added: Double-click in the sfx tracker to select all attributes of a single note.
+		Fixed: assignment shorthand RHS scope wrong when contains certain operators. e.g. a+=1&127
+		Fixed: while/if shorthands fail when "do" or "then" appears on the same line as part of an identifier
+		Fixed: ctrl-c copies the wrong sfx after clicking pencil button (next to pattern #) in organiser view
+		Fixed: spinning cart icon present in video memory when cart boots from splore
+
+
+	v0.2.0g
+
+		Added: Window title shows current cartridge filename while editing
+		Changed: ~ preceeding a numerical constant (e.g. ~1) counts as a single token
+		Fixed: >>> operator behaviour does not match lshr(a,b) when b >= 32 (again)
+		Fixed: PICO-8 freezes when shift by -0x8000 
+		Fixed: .p8 format does not store extpal label colours
+		Fixed: Can not save screenshot when filename contains ":"
+
+
+	v0.2.0f
+
+		Changed: @@ operator (peek2) to %
+		Fixed: Exported wasm crashes on boot when code contains a numerical constant out of range.
+		Fixed: HTML Shell treats controller shoulder buttons as MENU; easy to accidentally bump.
+		Fixed: shift operators behaviour undefined for negative values of n (now: x << n means x >> -(n\1))
+		Fixed: >>> operator behaviour does not match lshr(a,b) when b >= 32
+		Fixed: INFO crashes when code is close to 64k of random characters
+		Fixed: Code editor undo step not stored when starting to edit a new line (hard to see what happened)
+
+
+	v0.2.0e
+
+		Added: zip file creation (with preserved file attributes) when exporting binaries
+		Added: cpu working animation when cpu usage > 120 skipped frames
+		Improved: stop() / resume now works at the instruction level
+		Fixed: tline clipping broken (from 0.2.0d)
+		Fixed: cpu counting is wrong inside coroutines
+		Fixed: coroutines interrupted by garbage collection
+		Fixed: code compression suddenly much worse for carts > 32k chars
+		Fixed: code compression ratio can be less than 1 in extreme cases		
+		Fixed: pasting a string ending in '1' into the command prompt opens the editor
+		Fixed: html export can run out of pre-allocated heap when doing heavy string operations
+		Fixed: hex memory addresses displayed in puny font on windows
+		Fixed: devkit mouse message shown once per cart -- should be once per chain of carts
+		Fixed: can't paste sfx notes after moving to another sfx via keyboard
+		Fixed: copying note select vs. sfx vs. pattern range is ambiguous
+		Fixed: crash after redefining type()
+
+
+	v0.2.0d
+
+		Added: rnd(x) when x is an array-style table, returns a random item from that table
+		Added: gif_reset_mode (in config.txt / CONFIG command). Defaults to 0.1.12c behaviour
+		Added: print(str, col) form behaves the same as: color(col) print(str)
+		Added: Operators: <<> >>< <<>= >><=
+		Changed: tline now also observes an offset (0x5f3a, 0x5f3b)
+		Changed: tline rounds down to integer screen coordinates (same as line)
+		Changed: Final cpu adjustments (see release post)
+		Changed: Removed experimental "!"->"this" shorthand
+		Changed: clip() returns previous state as 4 return values
+		Fixed: Included files remain locked (and can not be edited by external editors)
+		Fixed: Carts loaded as plaintext .lua fail to handle BOM / DOS characters
+		Fixed: palt() returns previous state of bitfield as a boolean instead of a number
+		Fixed: CPU speed on widget doesn't exactly match stat(1)
+		Fixed: stat(1) occasionally reports garbage values when above 1.0
+		Fixed: Custom btnp repeat rates (0x5f5c, 0x5f5d) speed up when skipping frames
+		Fixed: gif_scale setting not read from config.txt
+		Fixed: tline: texture references are incorrect when sy1 < sy0
+		Fixed: tline: single pixel spans are drawn as two pixels
+		Fixed: binary exports' controls menu always shows 0 joyticks connected
+		Fixed: Pressing DEL on first row of tracker doesn't do anything
+		Fixed: host framerate regulation is slow (~1/sec) when PICO-8 frame takes < 1ms to execute
+		Fixed: fillp() return value (previous state) does not include transparency bit
+		Fixed: clip"" setting all clip values to 0 (should be ignored)
+		Fixed: Raspberry Pi static build / static export requires GLIBC 2.0.29 (now .16)
+		Fixed: stop(nil) crashes 
+		Fixed: print(), printh(), stop() prints "nil" with no arguments (should have no output)
+		Fixed: trace() can not be used with coroutines
+
+
+	v0.2.0c
+
+		Changed: Compressed size limit now 0x3d00 bytes (reclaimed an unused 0x100 byte block)
+		Fixed: >>>= operator (was doing a >>= replacement instead) 
+		Fixed: #including large .lua files causes crashes, weird behaviour
+		Fixed: Sandboxed CSTORE: writing partial data to another embedded cart clobbers the remaining data.
+		Fixed: Multicart code storing regression introduced in 0.2.0 (code from head cart stored in other carts)
+		Fixed: Can not edit spritesheet after panning
+		Fixed: Junk error messages when syntax error contains one of the new operators
+		Fixed: Crash with: 0x8000 / 1 
+
+
+	v0.2.0b
+
+		Changed: #include directive can be preceeded by whitespace 
+		Changed: Activity logger records nothing after idle for 30 seconds
+		Fixed: Mouse cursor movement in editor is not smooth
+		Fixed: Display palette doesn't reset after exiting splore
+		Fixed: PALT() returns 0 instead of previous state as bitfield
+		Fixed: Rectangle and line tools broken when used in map editor
+		Fixed: INSTALL_GAMES under Windows produces broken cart files
+		Fixed: Stored multicart sometimes has code section truncated (fails to load())
+
+
+	v0.2.0
+
+		Added: 8-bit character set with kana, alt font
+		Added: ord(), chr()
+		Added: SFX / Pattern organiser view
+		Added: SFX edit buttons on pattern channels
+		Added: tline // textured line drawing
+		Added: SPLORE automatically updates BBS carts when online
+		Added: Search for similar (shared tags) cartridges, or by thread
+		Added: predefined fillp() pattern values assigned to glyphs
+		Added: btnp() custom delays (poke 0x5f5c, 0x5f5d)
+		Added: "." shorthand command for advancing a single frame (calls _update, _draw if they exist)
+		Added: Current editor/cart view is recorded every 3 seconds to [app_data]/activity_log.txt
+		Added: Cutting (ctrl-x) and pasting selected sprites while in map view to also adjust map references to those sprites
+		Added: Clipboard is supported in the html exports (with some limitations) // load #wobblepaint for an example.
+		Added: Can load .lua files as cartridges
+		Added: Operators: ..= ^= \ \= & | ^^ << >> >>> ~ &= |= ^^= <<= >>= >>>= @ @@(update: @@ replaced with %) $
+		Added: New demo carts: waves.p8 dots3d.p8 automata.p8 wander.p8 cast.p8 jelpi.p8 (use INSTALL_DEMOS)
+		Added: Extra pre-installed games: Embrace, 8 Legs to Love (use INSTALL_GAMES)
+		Added: Splore cart labels for .p8 files
+		Added: Now 16 code tabs (click on the rightmost ones to scroll)
+		Added: ipairs()
+		Added: SAVE from commandline to quick-save current cartridge (same as ctrl-s) 
+		Added: BACKUP from commandline to save a backup of current cartridge
+		Added: CPU usage widget (ctrl-p while running cartridge)
+		Added: Button / dpad states exposed in memory at 0x5f4c (8 bytes)
+		Added: Random number generator state exposed at 0x5f44 (8 bytes)
+		Added: pico8_dyn version is included when exporting to Raspberry Pi
+		Added: allow_function_keys option in config.txt (CTRL 6..9 are now preferred -- will phase out F6..F9 if practical)
+		Added: Visible tab characters (draw_tabs in config.txt)
+		Added: pal({1,2,3..}) means: use the value for each key 0..15 in a table
+		Added: palt(bitfield) means: set the colour transparency for all 16 colours, starting with the highest bit
+		Added: Options menu for binary exports (sound / fullscreen / controls)
+		Added: Shape drawing tools in sprite and map editor
+		Improved: Miscellaneous HTML shell / player optimisations and adjustments
+		Improved: Lower cpu usage for small foreground_sleep_ms values (changed host event loop & fps switching strategy)
+		Changed: This update is called 0.2.0, not 0.1.12d! (grew into plans for 0.2.0, and bumped cart version number)
+		ChangeD: Reverted cheaper 0.1.12* costs on bitwise operators & peek (recommend replacing with operators if need)
+		Changed: negative numbers expressed with a '-' count as a single token
+		Changed: glitchy reset effect does not leave residue in base RAM (but maybe on screen when using sprites / tiles)
+		Changed: sset() with 2 parameters uses the draw state colour as default
+		Changed: line() or line(col) can be used to skip drawing and set the (line_x1, line_y1) state on the next call to line(x1,y1)
+		Changed: vital system functions (load, reboot etc.) can only be overwritten during cartridge execution  
+		Changed: sqrt(x) is now more accurate, and a little faster than x^.5
+		Changed: sqrt(x) returns 0 for negative values of x
+		Changed: btnp() delay and repeats now work independently per-button
+		Changed: pairs(nil) returns an empty function
+		Changed: Default screenshot scale (now 4x), gif scale (now 3x)
+		Changed: gif_len now means the length when no start point is specified (used to be the maximum recordable length)
+		Changed: (Multicarts) When loading data from many different carts, the swap delay maxes out at ~2 seconds
+		Changed: (Raspberry Pi) removed support for (and dependency on) libsndio
+		Changed: camera(), cursor(), color(), pal(), palt(), fillp(), clip() return their previous state
+		Changed: Can not call folder() from a BBS cart running under splore
+		Changed: F9 resets the video, so that multiple presses results in a sequence of clips that can be joined to together
+		Changed: color() defaults to 6 (was 0)
+		Changed: Backed up filenames are prefixed with a timestamp.
+		Changed: Automatically start on the (host's) current path if it is inside PICO-8's root path
+		Changed: tostr(x,true) can also be used to view the hex value of functions and tables (uses Lua's tostring)
+		Changed: Can hold control when clicking number fields (spd, pattern index etc.) to increment/decrement by 4 (was shift)
+		Fixed: HTML exports running at 60fps sometimes appear to repeatedly speed up and slow down
+		Fixed: HTML export layout: sometimes broken -- option buttons overlapping in the same place 
+		Fixed: __tostring metatable methods not observed by tostr() / print() / printh()
+		Fixed: Mac OSX keyboard permissions (fixed in SDL2 0.2.12)
+		Fixed: Audio mixer: SFX with loop_end > 32 would sometimes fail to loop back
+		Fixed: btn() firing a frame late, and not on the same frame as stat(30)
+		Fixed: #include can not handle files saved by some Windows text editors in default format (w/ BOM / CRLF)
+		Fixed: Exports do not flatten #include'd files
+		Fixed: Default window size has too much black border (now reverted to previous default)
+		Fixed: Functions yielded inbetween frames occasionally push an extra return value (type:function) to the stack
+		Fixed: can't load png-encoded carts with code that starts with a :
+		Fixed: .gif output unnecessarily large
+		Fixed: .gif recording skipping frames when running at 15fps	
+		Fixed: printh does not convert to unicode when writing to console or to a file
+		Fixed: cart data sometimes not flushed when loading another cart during runtime
+		Fixed: Can not navigate patterns with -,+ during music playback
+		Fixed: Mouse cursor not a hand over some buttons
+		Fixed: Laggy mouseover messages (e.g. showing current colour index, or map coordinates)
+		Fixed: Can't paste glyphs into search field
+		Fixed: Tab spacing always jumps config.tab_spaces instead of snapping to next column
+		Fixed: -p switch name is wrong (was only accepting "-param" in 0.12.*
+		Fixed: Code editor highlighting goes out of sync after some operations
+		Fixed: Multicart communication problem (affecting PICOWARE)
+		Fixed: time() speeds up after using the RESUME command
+		Fixed: Audio state is clobbered when using the RESUME command
+		Fixed: Audio glitch when fading out music containing slide effect (1)
+		Fixed: Toggling sound from splore cart->options menu has no effect
+		Fixed: Devkit keyboard works when paused
+		Fixed: "-32768 % y" gives wrong results
+		Fixed: Replacing all text in code editor breaks undo history
+		Fixed: Double click to select last word in code does not include the last character
+		Fixed: Weird block comment behavior in code editor
+		Fixed: HTML export: cart names can not contain quotes
+		Fixed: HTML export: menu button layout under chromium
+		Fixed: HTML export: Adding content above cartridge breaks mobile layout
+		Fixed: HTML export: Can touch-drag PICO-8 screen around (breaks simulated mouse input)
+		Fixed: LOAD("#ABC") does not always immediately yield
+		Fixed: Infinite RUN() loop crashes PICO-8
+		Fixed: Mouse cursor is not a finger on top of most "pressable" button-style elements
+		Fixed: CD command fails when root_path is relative (e.g. "pico8 -root_path .")
+		Fixed: poke in fill pattern addresses (0x5f31..0x5f33) discards some bits
+		Fixed: After using ctrl-click in map editor, can not modify map outside that region
+		Fixed: Shift-selecting sprites from bottom right to top left selects wrong region
+		Fixed: Changing GIF_LEN from PICO-8 commandline sometimes breaks gif saving
+		Fixed: pget() sometimes returns values with high bits set
+		Fixed: Preprocessor: unary operator lhs is not separated in some cases (e.g. x=1y+=1)
+		Fixed: Preprocessor: ? shorthand prevents other preprocess replacements on same line
+		Fixed: Preprocessor: fails when multiple shorthand expressions + strings containing brackets appear on the same line
+		Fixed: Loading a .p8 file with too many tabs discards the excess code.
+		Fixed: Map editor's stamp tool wraps around when stamping overlapping the right edge.
+		Fixed: Very quick/light tap events sometimes do not register
+		Fixed: SFX tracker mode: can't copy notes with shift-cursors before clicking (whole sfx is copied instead)
+		Fixed: "..." breaks syntax highlighting
+		Fixed: Click on text, press up/down -> cursor reverts to previous horizontal position
+		Fixed: CTRL-[a..z] combinations processed twice under some linux window managers
+		Fixed: ctrl-up/down to jump to functions in the code editor breaks when "function" is followed by a tab
+		Fixed: map & gfx drawing selection is not applied consistently between tools
+		Fixed: Using right mouse button to pick up a colour / tile value sometimes also applies current tool
+
+
+	v0.1.12c
+
+		Fixed: CPU usage reported by stat(1) is higher than actual value
+		Fixed: Fail to load .p8 cartridges w/ BOM marker / CRLF endlines
+		Fixed: Syntax errors / crash caused by #including files containing BOM / CRLFs
+		Fixed: Can not save .p8 when contains unresolved #includes
+		Fixed: Can't open pico-8.txt in Notepad.exe (added CRLFs)
+		Fixed: Can delete null terminator at end of code (revealing previously deleted code)
+
+
+	v0.1.12b
+
+		Added: config command (e.g. CONFIG THEME CLASSIC)
+		Fixed: Windows sound resampling artifacts (moved to SDL2 2.0.9 audio:directsound)
+		Fixed: Glyphs stored as unicode can not load when #include'd		
+		Fixed: Code highlighting is wrong after select and delete a line
+		Fixed: Last line endpoint not present in draw state memory
+		Fixed: Ubuntu 16.04 can not run because requires glibc 2.27 (reduced dependency to 2.14)
+		Fixed: stat(102) returns nil when run from binary instead of 0 (now 0)
+		Fixed: Loading cartridge from commandline fails when path contains "../"
+		Fixed: (OSX) Crash when reloading external changes with CTRL-R
+		Fixed: (Windows) Crash when running cart with included code		
+		Fixed: Can not export or include extra cartridges outside of current directory
+		Fixed: Off by 1 when search for line 1 (affected ctrl-b, ctrl-l)
+		Fixed: html template -- mouse cursor showing over canvas (now hidden by default)
+
+
+	v0.1.12
+
+		Added: #include a text file, or a tab from another cartridge
+		Added: Unlimited undo for gfx,map,sfx
+		Added: [sfx] snippets: copy and paste sound & music between PICO-8 instances and BBS posts
+		Added: (BBS) sfx snippet player
+		Added: CTRL-G in code editor to repeat search across all tabs
+		Added: Splore search text entry with cursor key button presses
+		Added: Custom tab widths (tab_width in config.txt)
+		Added: Web exporter template: joystick & touch support, preview image, menu buttons, adaptive size, controls screen
+		Added: .wasm exporter (use -w)
+		Added: Raspberry Pi binary exporter
+		Added: -export // run the EXPORT command from host commandline
+		Added: Toggle flags on multiple sprites at once by selecting them first
+		Added: Confirmations when loading/saving with unsaved changes
+		Added: Windowed mode support for Raspberry Pi
+		Added: serial() interface for Raspberry Pi // serial() -- spi, ws281x, direct bit banging // 0.2.1 update: dropped spi
+		Added: api: peek2 poke2 rawset rawget rawlen rawequal next
+		Added: Comment/uncomment selected block with CTRL-B
+		Added: Can save screenshots and gifs from exported binaries via EXTCMD
+		Added: Can exit exported binaries after runtime error / stop(), and also via EXTCMD("SHUTDOWN")
+		Added: SHUTDOWN menu item added to pause menu when running via "-run cartfile"
+		Added: -kiosk to run in kiosk mode: boot into splore, favourites menu only, no cart menu
+		Added: -root_path to set root cartridges folder from commandline
+		Added: shift+space in song view to play from the current quarter of the selected channel
+		Added: CTRL-W, CTRL-E in code editor to jump to start / end of line
+		Added: -accept_future to load cartides made with future versions of PICO-8
+		Added: -preblit_scale (default: auto) for less blurry scaling with -pixel_perfect 0
+		Added: -pixel_perfect -1 (auto) only uses pixel perfect scaling when < 10% of the containing screen axis is wasted
+		Added: highlight all occurances when searching for text in code editor 
+		Added: tab completion across directories
+		Added: In map editor, non-zero cels that are drawn all black are marked with a single blue dot
+		Changed: all(), foreach() cpu cost is now much cheaper (but still a little more than using a for loop)
+		Changed: cursor() can also set the current color with a third parameter
+		Changed: stat 24..26 return -1 when no music is playing
+		Changed: 3x4 font characters (uppercase in ascii) allowed in code editor (but not pasteable/editable)
+		Changed: time() / t() always means seconds since run (but still updated once per _update() / _update60)
+		Changed: line(x1,y1) can be used to draw from the end of the last line
+		Changed: del() returns the item deleted on success
+		Changed: single setting for audio volume (-volume switch, "volume" in config.txt)
+		Changed: allow '-' in cartdat() names
+		Changed: 8 and - only map to buttons 4 and 5 by default for CHIP build
+		Changed: Raspberry Pi pico8_dyn build does not support gpio/serial (and so does not require wiringPi)
+		Changed: Default theme is 1 (blue background in code editor)
+		Changed: When loading a cart from commandline, automatically set the current path if inside PICO-8's filesystem 
+		Fixed: Code editor uses too much cpu / battery power
+		Fixed: cstore() with an external cart name broken when run from exported cart or as bbs cart
+		Fixed: Undoing changes to SFX after using pitch drawing tool clears SFX data
+		Fixed: Running headless scripts under Windows / Mac OSX crashes
+		Fixed: Running headless scripts with no video driver fails
+		Fixed: Can not load BBS carts in headless script mode (without auto-running)
+		Fixed: (Web exporter) mouse cursor doesn't work in fullscreen
+		Fixed: (Web exporter) mouse button 2 brings up context menu
+		Fixed: (Web exporter) Clusters of FS.syncfs calls causing error messages (and inefficient?)
+		Fixed: (Windows) PICO-8 behaves as if it is not the foreground application
+		Fixed: divide and abs sign flipping for 0x8000.0000
+		Fixed: sqrt(0x0000.0001) freezes
+		Fixed: "-1"+0 evaluates to 0xffff.0001
+		Fixed: shift-tabbing to unindent alters selection range
+		Fixed: background_sleep_ms reverts to default value
+		Fixed: "open in thread" option appears for local carts
+		Fixed: (code editor) undo markers in unexpected places
+		Fixed: root_path, desktop_path in config.txt doesn't work without trailing slash
+		Fixed: Audio sampling rate is wrong when device/driver doesn't support 22050MHz
+		Fixed: Loading cart with less than 5 pixel rows of gfx does not clear default white cross sprite
+		Fixed: cpu cycle exploit using peek4 with no parameters
+		Fixed: SFX keyboard editing operations (e.g. SPD +/-) sometimes applied to the wrong SFX
+		Fixed: Cursor behaviour when moving between song and sfx view, and when playing music
+		Fixed: Selecting SFX notes with shift + home/end/pgup/pgdown
+		Fixed: Vibrato (2) and drop (3) effects in SFX instruments not observed
+		Fixed: Can not place note at C-0 in pitch mode
+		Fixed: CTRL-F search in code skips matches that are close together
+		Fixed: (Mac) warning about unoptimized program (built with SDL 2.0.9, + now 64-bit)
+		Fixed: (Raspberry Pi) Keypresses leaking to desktop
+		Fixed: (Raspberry Pi) Keyboard layout fixed to US
+		Fixed: printh(nil) prints [false] instead of [nil]
+		Fixed: toggling audio mute twice returns to maximum volume
+		Fixed: alt+cursors moves cursor in code editor
+		Fixed: del does not work on first character of code or commandline
+		Fixed: preprocessor breaks on double slash in string s="\\"
+		Fixed: sometimes code executing a little after point of runtime error
+		Fixed: Token count reported in editor is more than 0 after rebooting
+		Fixed: "Removed empty tabs" message displayed when loading cart with fewer tabs
+		Fixed: Member variables highlighted when same as API function names (e.g. actor.spr)
+		Fixed: Hot-plugged joysticks not recognized
+
+
+	v0.1.11g
+		
+		Added: CTRL-C to copy contents of commandline
+		Added: stat(100..102) for current breadcrumb label, bbs cart id, and hostname (web)
+		Added: content_filter in config.txt
+		Added: Cartverse cart id support (not live server-side yet though)
+		Fixed: Tab preview does not show on mouseover
+		Fixed: Can't paste uppercase characters into commandline
+		Fixed: Preprocessor can't handle glyphs in form: "♥.x += 1"
+		Fixed: Unsaved changes sometimes reported when filename is not set
+		Fixed: Pause menu doesn't open inside infinite loop inside _draw
+		Fixed: load() crashes when "parameter string" parameter is not a string
+		Fixed: cstore(),reload() crash when external cart filename is not a string
+		Fixed: printh(str, "@clip") fails for glyph characters in str
+
+
+	v0.1.11f
+
+		Fixed: Pause menu doesn't open inside an infinite loop
+		Fixed: Binary and hex string digits outside of 0xffff.ffff alter result
+
+
+	v0.1.11e
+
+		Added: stat(30..31) for devkit keyboard input
+		Added: extcmd("pause") extcmd("reset") extcmd("breadcrumb")
+		Added: lshr(), ceil(), rotl(), rotr(), peek4(), poke4()
+		Added: stat(12..15) to grab the position of the pause menu (x0,y0,y1,y1)
+		Added: DPAD game controller buttons mapped to LRUD
+		Added: CTRL-click on song navigator to scroll by 4 patterns
+		Added: Can type and paste glyphs in commandline
+		Added: Notification when CTRL-R fails to reload because of unsaved changes
+		Added: Notification when code automatically converted to lower-case
+		Added: INFO() checks for "external changes" (e.g. when using a separate text editor)
+		Added: .p8.png format can be used with cstore() and carts bundled in multicarts
+		Added: Can optionally set fill pattern using colour parameter 
+		Changed: Glyphs can be used as variable names
+		Changed: Glyphs stored in clipboard and .p8 format as roughly corresponding unicode
+		Changed: .p8 format skips storing tailing rows of data that match default state
+		Changed/Fixed: shr(x,n) is now equivalent to calling shr(x,1) n times when n >= 32
+		Fixed: Error message and stack trace line numbers 0 or slightly out
+		Fixed: Unclosed block error navigates cursor to <eof> rather than start of block
+		Fixed: Exported binaries can load carts outside of bundle
+		Fixed: BBS cart loaded from a local cart loses data cstore()ed during previous run
+		Fixed: btn() returns same as btnp()
+		Fixed: btnp(6) always returns false
+		Fixed: Missing mask pixels in cart download animation frame
+		Fixed: Crash when try to load a directory as a cart
+		Fixed: Sometimes cursor position set by keyboard mouse emulation in code editor
+		
+		
+	v0.1.11d
+
+		Added: t() aliased to time()
+		Fixed: time() always returns 0 when there is no _update function
+		Fixed: (raspi) Keyboard stops responding after pressing CTRL-F, CTRL-Z
+		Fixed: (raspi) Double keypresses in sound editor when entering notes
+		Fixed: stat(6) pads parameter string with spaces
+
+	
+	v0.1.11c
+		
+		Added: Local and UT time queries using stat()
+		Added: host_framerate_control (config.txt) to improve performance on slower machines and web 
+		Added: Control over cpu usage when running in background (-background_sleep_ms / config.txt)
+		Added: Windows icon in exported exe
+		Added: F11 to toggle fullscreen
+		Added: export -c switch to indicate transparent icon colour 
+		Added: show_backup_messages (config.txt) to turn off backup notifications
+		Added: SFX instruments documentation in pico8.txt
+		Added: Error message when trying to export carts with code size over the compressed limit
+		Changed: If config.txt is not found, the same directory as the executable is searched
+		Changed: If sdl_controllers.txt exists in the same directory as the executeable, it is processed first
+		Changed: Shorthand if () statements must be written on a single line
+		Fixed: reload() from bundled, non-primary cart in exported html multicart reads only original data
+		Fixed: Exported binaries wrongly observe F7 (capture label)
+		Fixed: Loading carts from earlier versions alters SFX data not intended for audio
+		Fixed: Old version of fill patterns documentation near end of pico8.txt
+		Fixed: 'backed up unsaved changes' message displayed during runtime for cstored() carts
+		Fixed: PICO-8 runs too slowly when in background (new default background_sleep_ms: 20)
+		Fixed: Saving screenshots and videos from exported binaries are named 0_*
+		Fixed: Compressed size limit warning on save doesn't mention exported carts
+		Fixed: btn(), btnp() don't work in infinite loops
+		Fixed: btnp() timing inconsistent between 30fps / 60fps / during frame-skipping / with no _update
+		Fixed: Can't move between channels while music is playing in song mode
+
+
+	v0.1.11b
+	
+		Fixed: Preprocessor bug regressions: "if (..) or", "a.b -= c - d"
+		Fixed: Crash when pressing menu button on an empty favourites list
+
+
+	v0.1.11
+		
+		Added: Binary exporters (Windows, Linux, Mac OSX)
+		Added: Code tabs
+		Added: Splore cart menu
+		Added: Fill patterns
+		Added: Custom sfx instruments
+		Added: load("#1234") to load [and run] a BBS cart
+		Added: -x switch // execute a cart headless, for making commandline toolchains
+		Added: Compressed size display and limit warning lights in code editor
+		Added: CTRL-L to jump to a line number in code editor
+		Added: numbers can be written in binary: 0b10100010 
+		Added: tostr(), tonum()
+		Added: extcmd(): audio_rec, audio_end to record all audio output.
+		Added: ls() returns a list of local files if called while running
+		Added: getmetatable()
+		Added: coroutine error reporting // wrap coresume() in assert()
+		Added: sfx() can take a 4th parameter: number of notes to play
+		Added: Live sfx and music editing + better navigation controls
+		Added: Transpose selected sfx notes relative to C by entering a note w/ SHIFT held
+		Added: Insert and delete sfx rows with enter and backspace
+		Added: Hidden note data is shown in sfx editor when relevant (slide, arps)
+		Added: Warning displayed when unsaved changes backed up
+		Added: Separate animation for downloading vs. loading a cart
+		Added: export -p switch to supply a customized html template 
+		Added: Mousewheel when devkit mouse enabled: stat(36) // not supported in web
+		Added: < > to change zoom level in gfx and map editors
+		Changed: Rebalanced / fixed api cpu costs
+		Changed: Screenshot and gif filenames based on current cart if available
+		Changed: add() returns the added object
+		Changed: removed global hpf on audio
+		Changed: (sfx) can slide to volume 0
+		Changed: removed master low pass filter
+		Changed: assert() can take an optional error_message parameter
+		Changed: ? (shorthand for print()) can be prefixed by whitespace 
+		Changed: shl(), shr() return 0 if second parameter >= 32
+		Changed: Automatically drop down to software blitting mode if opengl fails
+		Changed: Lua memory limit set to 2MB (was 1MB)
+		Changed: Some options (-width, -show_fps) apply only to the session; not saved to config.txt
+		Updated: Internal game controller mappings from SDL_GameControllerDB
+		Fixed: Pops & clicks in audio when switching between playing SFX
+		Fixed: Crash in audio mixer because of bad locking
+		Fixed: Crash when loading .p8 files with more than 64k of code
+		Fixed: Indexing of sparse tables fails after removing n/2 elements
+		Fixed: Calling stat() inside an infinite loop crashes
+		Fixed: Resetting cartridge corrupts cartridge data in range 0x5e00..0x5eff
+		Fixed: Can not recover from a cart error caused by glitchy data on resetting 
+		Fixed: String->negative number conversion off by 0x0.0001 (-1 --> 0xffff0001)
+		Fixed: Crash when running cart closed to 64k char limit
+		Fixed: Cursor can't move to the right of last character in code editor
+		Fixed: Missing highlighted keywords: in, add, del, menuitem
+		Fixed: Preprocessor bugs: "a+=1+2\n*3", "a+=(1)ba=42", "a[(1)]+=1"
+		Fixed: Preprocessor performs replacements inside a string printed with ?
+		Fixed: Display freezes when terminating a program running at >100% cpu
+		Fixed: Quick-running (CTRL-R) clobbers some editor state (e.g. current sprite page)
+		Fixed: Loading a .p8 file with a future version reports a generic failure
+		Fixed: alt-enter to toggle fullscreen also triggers pause menu
+		Fixed: Splore scrolling jumps around when list gets too long
+
+
+	v0.1.10c
+	
+		Fixed: atan flips sign for very negative values of x close to zero
+
+
+	v0.1.10b
+		Fixed: HTML exporter carts don't run
+		Fixed: HTML export 60fps support broken
+		Fixed: HTML export when path has a space in it (common for OSX)
+		Fixed: atan2 ignores sign of y
+		Fixed: (Raspberry Pi) Crash when access gpio not as root
+		
+
+	v0.1.10
+	
+		Added: Multi-cart export in html
+		Added: Cart reset glitch
+		Added: Demo carts: bounce, sort
+		Added: .p8 format can now store cart labels
+		Added: Splore navigation keys: pageup/down, home, end
+		Added: Splore usage hint shown on empty favourites list
+		Added: Warning on boot when data folder is read-only or can't be created
+		Added: Pressing tab with code selected indents those lines (shift-tab to un-indent)
+		Added: Double click word to select it
+		Added: Trigger screenshot/video/label capture from inside program: extcmd()
+		Changed: CTRL+left/right in code editor skips to end of word or span of non-whitespace
+		Changed: When a cart terminates from splore, button press is required to continue
+		Changed: load("@clip") can only be called from commandline (security)
+		Fixed: Can over-allocate host memory if exceed it within one frame
+		Fixed: atan2(-1, -32768) crash, and error for small values of dy
+		Fixed: (Web) using cstore() on self causes unloadable cart (bug introduced in 0.1.8?)
+		Fixed: (web) Pressing ctrl-v crashes the player (should do nothing)
+		Fixed: (Raspberry Pi) WiringPi library required in static build
+		Fixed: (Raspberry Pi) Crash on exit when launching via desktop icon
+		Fixed: (Raspberry Pi) keyboard input broken (observed on raspi2s)
+
+
+	v0.1.9b
+
+		Added: Alternative function key mapping: ctrl-6..9 for F6..F9
+		Added: Alternative glyph entry method: (ctrl-k) to toggle glyph mode
+		Changed: Enter glyphs with shift a..z, but can be disabled in config.txt 
+		Changed: Increased emscripten ram to 128MB (some carts at risk of running out)
+		Fixed: Crash when window size is tiny or minified
+		Fixed: Crash on toggling fullscreen mode
+		Fixed: printh can write files outside filetree (security issue)
+		Fixed: show_fps (can also now be toggled with ctrl-1)
+		Fixed: Shorthand if/then syntax error when using the form: (functionname)(param)
+		Fixed: log.txt not saved in path specified by -home switch
+		Fixed: Default application data folder created even when -home specified
+		Fixed: Missing dynamic builds (pico8_dyn) from linux archives
+		Fixed: Removed unneeded RPATH from linux binaries
+		Fixed: export foo%d.wav fails to write multiple files 
+
+	v0.1.9
+	
+		Added: Copy and paste sprites and whole cartridges directly to BBS posts 
+		Added: JAM category in splore
+		Added: GPIO support for Raspberry Pi
+		Added: Read clipboard using stat(4) after user presses CTRL-V
+		Added: printh() can optionally write to a file or the host clipboard
+		Added: Editor tool information and tips shown on mouseover
+		Added: Set desktop path with -desktop (screenshots and gifs are saved here)
+		Added: Warning on saving .p8 when compressed code size exceeds .p8.png limit
+		Added: Alternative editor colours // config.txt: gui_theme 1
+		Added: Dotted line every 8 rows in song view
+		Added: -screenshot_scale (default: 3) and -gif_scale (default: 2)
+		Added: Can use ctrl-up, ctrl-down to jump to start and end of code
+		Added: CTRL-M to mute/unmute sound
+		Added: HTML5-exported carts support 60fps
+		Added: Timeout switch for splore downloads: -timeout
+		Changed: Glyph characters typed with alt + a..z 
+		Changed: stat(0) does not include allocations waiting to be garbage collected
+		Changed: Unfiltered screen stretching at integer scales by default
+		Changed: Removed -aspect and -scale settings (use draw_rect instead)
+		Fixed: -home has no effect under Windows
+		Fixed: Sometimes frame skipping starts before CPU usage has reached 100%
+		Fixed: Double-speed BTNP() timing in 60fps mode
+		Fixed: Exported HTML fails when _update60 is used instead of _update
+		Fixed: Can't copy and paste button glyphs
+		Fixed: Lines containing glyphs do not scroll far enough horizontally 
+		Fixed: Loading .p8 renamed as .p8.png from splore freezes
+		Fixed: Bucketfill in map doesn't sync to shared memory
+		Fixed: fset fails when de-setting flags
+		Fixed: Syntax error when beginning with the form: IF (..) [OR|AND]\n  
+		Fixed: cls() costs twice as much cpu as it should
+		Fixed: wav file exporter missing some data / writing truncated buffers
+		Fixed: Entering new notes in song view doesn't observe current volume, instrument
+		Fixed: alt-tab sometimes generates alt character text entry event
+		Fixed: Resuming a cancelled download in splore causes crash
+		Fixed: Controller attributes in log.txt always shown as -1	
+		
+		
+	v0.1.8
+	
+		Added: 60fps support
+		Added: Music exporter
+		Added: Custom GIF length (maximum 120 seconds)
+		Added: -,+ to navigate sprite tabs, sfx, music patterns
+		Added: sfx editor: navigate with home, end, pageup/down, mousewheel
+		Added: <, > to modify sfx speed, or click and drag
+		Added: Middle mouse button to pan around spritesheet / map
+		Added: Shortcut command for splore: S
+		Added: Pre-installed selection of BBS cart (use INSTALL_GAMES)
+		Added: Warning when saving .p8.png with no label 
+		Added: (OSX) logging to ~/Library/Logs (viewable with Console.app)
+		Added: -pixel_perfect switch (on by default)
+		Added: -draw_rect switch
+		Changed: Can not CTRL-S save over a loaded bbs cart
+		Changed: Only .p8 files listed by dir() and by splore
+		Changed: Command history increased to 256
+		Changed: exit() / shutdown() have no effect while running cart
+		Fixed: Memory usage (stat(0)) inconsistent across host platforms
+		Fixed: Spinny disks shows when reloading current cart with load()
+		Fixed: GIF saver does not respect 64x64 / mirrored modes
+		Fixed: Miscellaneous multi-line comments / strings issues
+		Fixed: Empty map cels cost cpu in mapdraw()
+		Fixed: mapdraw() slowdown when drawing bottom half of map
+		Fixed: preprocess changes semantics when += and : operators on same line
+		Fixed: Identifiers starting with underscore counted as extra token
+		Fixed: Saving .png exceeding compressed code limit fails silently
+		Fixed: Right-clicking a sprite does not set the currently edited sprite
+		Fixed: (Windows) extra space added to pasted lines
+		Fixed: spr() expensive when drawn with low negative coordinates
+		Fixed: pipe character identical to colon character
+		Fixed: (Raspberry Pi) shift key appends a character when entering text
+		Fixed: Editor mode buttons are still clickable during cart runtime
+		Fixed: When loading a .p8.png file, label is reset and needs to be re-captured
+		Fixed: export() does not report failure
+		Fixed: mset()'d changes in shared memory not readable via peek() / sget()
+		Fixed: cstore() saving edited code
+		Fixed: audio pop between patterns during music playback
+
+	v0.1.7
+	
+		Added: menuitem()
+		Added: button glyphs in code (shift-L, R, U, D, X, O)
+		Added: Customisable data directory (e.g. pico8 -home mydata)
+		Added: Web gpio pins: read and write pico8_gpio[] in javscript 
+		Fixed: SPLORE search doesn't reset
+		Fixed: Splore skipping 33rd cart listing after loading more items
+		Fixed: Crash when selecting a local binary file in splore
+		Fixed: Semicolon can't be used as a list or statement separator 
+		Fixed: Exported html can not cstore self
+
+
+	v0.1.6
+
+		Added: SPLORE local & bbs cartridge explorer
+		Added: setmetatable(), cocreate(), coresume(), costatus(), yield()
+		Added: Spinning cart icon to show when a cart is swapped / written to
+		Added: Permanent storage when carts played in a browser
+		Added: Adjustable aspect ratio (-aspect 420 for 1:1)
+		Changed: Lua memory limit: 1024k (was 512k)
+		Changed: Music channel now resumes after being clobbered by an sfx 
+		Changed: Arpeggios double speed when SFX speed <= 8
+		Changed: Exceeding compressed code limit does not block saving in .p8 format 
+		Changed: spr() half as expensive, to be consistent with map()
+		Changed: Fractional hex number notation: 0x0.3 == 0x0.3000, (was 0x0.0003)
+		Changed: : operator doesn't count as an extra token (same as .)
+		Changed: cstore() writes directly to disk
+		Changed: cstore(), reload() return number of bytes read / written
+		Changed: save() while running does nothing. (use cstore() instead)
+		Changed: load() while running loads and runs the specified cartridge 
+		Fixed: Small pops in audio mixer caused by sound wave discontinuities
+		Fixed: HTML5-exported sound clicks badly under Chrome
+		Fixed: Display palette is not oberserved when exporting GIFs
+		Fixed: Rapid keypresses causes duplicate readings in tracker & text editor
+		Fixed: += inside comments breaks preprocessor
+		Fixed: sspr() cpu cost the same when clipped
+		Fixed: cartdata() with bad parameters crashes
+		Fixed: EXPORT from commandline can not be used without brackets and quotes
+		
+
+	v0.1.5
+	
+		Added: Raspberry Pi Build
+		Added: Keyboard configuration for player buttons (KEYCONFIG) 
+		Added: Music tracker select / copy / paste
+		Added: Single-level undo in audio tools
+		Added: Live preview of frequencies in sound editor
+		Fixed: Command history extends past last reboot
+		Fixed: Sfx exporter broken
+		Fixed: Slashes at end of path resolve to double slashes
+		Fixed: Load cart from commandline under Windows
+		
+
+	v0.1.4d
+	v0.1.4c
+	
+		Fixed: International character entry inserting extra characters
+		Fixed: Lines with tabs have broken cursor placement and display boundary
+
+	v0.1.4b
+	
+		Fixed: OSX command-key combinations broken
+		
+	v0.1.4
+		
+		Added: spritesheet importing and exporting with import("blah.png"), export("blah.png")
+		Added: sfx exporting with export("blah%d.wav")
+		Added: External cartridge parameter for reload() and cstore()
+		Added: Persistent cartridge data mapped to 0x5e00
+		Added: Click token limit to toggle token & char limit display
+		Added: assert(), type()
+		Added: P to pause
+		Changed: code char limit: 64k (was 32k)
+		Changed: local declarations and semicolons not counted as tokens
+		Changed: Pairs of brackets and block delimitations count as one token
+		Changed: Only _update() or _draw() need to exist to enter main loop
+		Changed: Allow forward-slash in code editor
+		Changed: info() reports current (last loaded or saved) filename
+		Changed: html5 version compiled with NO_DYNAMIC_EXECUTION 
+		Changed: can only cstore up to 64 different files in one session
+		Changed: load() automatically copies data section of cart to base ram
+		Fixed: Shift-drag-copy sprites -> paste only pastes 1x1
+		Fixed: ".." should count as one token
+		Fixed: Tracker displaying D instead of .
+		Fixed: Multi-line comments
+		Fixed: Crash on run when code close to char limit
+		Fixed: When over token limit, can not run any command
+		Fixed: Unused high bits in SFX section not saved in .p8 format
+		Fixed: Camera position memory mapping out of sync
+		Fixed: pico8.txt link broken in windows installer
+		Fixed: print() crashes when parameter is not a string or numbers
+		Fixed: Multi-line strings & escape chars mess up tokenizer and print()
+		Fixed: Joystick not responding when left stick is up to the left
+		Fixed: Alt-F4 saves screenshot before quitting
+		Fixed: Sprite editor mode button doesn't show fullscreen mode
+		Fixed: -sound parameter not working in html5 version 
+		
+		
+	v0.1.3
+	
+		Added: paste into commandline
+		Fixed: lua standard libraries accessible
+		Fixed: command-line loading doesn't work
+		Fixed: music pattern finished too early when all tracks set to looping 
+		Fixed: peek()ing odd bytes in sfx address space masks bit 7
+		Fixed: cstore and reload from code space should have no effect
+	
+	v0.1.2
+	
+		Added: html5 cartridge exporter
+		Added: Cartridge save data (64 fixed point numbers)
+		Added: 8-player input
+		Added: Demo carts: COLLIDE and BUTTERFLY
+		Added: Command-line parameters // load cart, -run, settings
+		Added: Alternative function keys (F6..F9 aliased as F1..F4)
+		Added: pairs()
+		Added: printh() for debugging
+		Added: Tab completion for filenames in console
+		Added: stack trace on runtime error
+		Changed: music pattern length taken to be first non-looping channel's length
+		Changed: noise instrument (6) has low frequency white noise scaled by volume
+		Changed: screenshot captures whole window contents at display resolution
+		Changed: del() moves remaining items up one index to maintain a packed table
+		Changed: add(),del(),count(),all() no longer store extra fields
+		Changed: removed count() from docs -- now just a legacy function. Use # operator instead.
+		Changed: cursor only blinks while window is active
+		Changed: peek(), poke() and bitwise operations (band()..) have no function call overhead
+		Changed: yellow slightly warmer
+		Changed: No camera snapping after pan in map mode
+		Fixed: sqrt() crashing for 0 or >= 32761
+		Fixed: Semi-colon characters in text editor
+		Fixed: Long lines split when saving in .p8 format 
+		Fixed: pget() does not respect camera position
+		Fixed: Error message when peeking or poking outside of legal address space
+		Fixed: Search replace colour fills one pixel outside of selected region
+		Fixed: Playing an empty music pattern breaks subsequent music playback
+		Fixed: Invalid sfx editing state on startup
+		Fixed: Painting instruments values in frequency view also sets volumes
+		Fixed: Inconsistent gif recording speeds
+		Fixed: Unmapped joystick support
+		Fixed: Compressed code size sometimes larger than uncompressed
+		Fixed: mid() fails when first argument is not smallest
+		Fixed: Scroll wheel changes sprite/map zoom while in code editor
+		Fixed: CTRL-R (quick-run) drawing over current line in command mode
+		Fixed: Label capture (F7) does not respect display palette state
+		Fixed: Syntax highlighting of api functions and hex numbers
+		Fixed: Looping to 0 with negative step finishes at 1
+		Fixed: nil values printed as false instead of nil
+		Fixed: Hexadecimal fractional parts
+		Fixed: btnp() unresponsive when skipping frames
+		Fixed: Editing mode is lost when using ctrl-r to run
+		Fixed: Tracker note entry keys mapped, messing up piano-like layout
+		Fixed: Shared gfx/map memory out of sync after some editor operations
+		Fixed: Alt-gr character entry
+		Fixed: Can map display palette to entries >= 16 using poke()
+		Fixed: Using shift to select in code editor has wrong selection range
+		Fixed: Dragging above top of text causes selection to flip to end
+		Fixed: Duplicate at end of file listing
+		
+		
+	v0.1.1
+
+		Added: Token-based code limiting (8192 tokens, 32k ascii text)
+		Added: Freeform move, pan and selection in sprite and map editors
+		Added: Flood-fill tool (sprite and map)
+		Added: .GIF saver
+		Added: CTRL-Stamp to stamp with transparency
+		Added: Single-step undo for map and sprites
+		Added: 2x2 brush
+		Added: sqrt(), atan2()
+		Added: CTRL-S to quick-save
+		Added: CTRL-R reloads .p8 file and runs (useful for external text editing)
+		Added: Automatic backups on overwriting or quitting without saving
+		Added: Scroll wheel zooms in sprite editor
+		Added: Customisable resolution //  e.g. pico8 -width 580
+		Added: Strings highlighted as green
+		Added: ALT-click can optionally simulate right click (see config.txt)
+		Added: palt() to control transparency for spr(), sspr()
+		Added: info()
+		Changed: load() tries adding .p8.png, .png if file doesn't exist
+		Changed: Draw operations apply only to selection when active
+		Changed: Move operations (cursors) apply to selection if present
+		Changed: Removed time()
+		Changed: Random seed is random on cart startup
+		Changed: api functions never read directly from cart rom
+		Changed: sspr() can take negative values for dw, dh
+		Fixed: Sparse table indexing with integers fails
+		Fixed: Assignment operators and shortform if-then-else failing
+		Fixed: sspr() failed when w0 == 128
+		Fixed: Circle drawing broken when camera not (0,0)
+		Fixed: CPU hogging
+		Fixed: Noise instrument clobbers rnd() sequence
+		Fixed: Audio system not resetting on program reset
+		Fixed: % operator sometimes wrong for negative values
+		Fixed: Length operator (#)
+		Fixed: Power operator (^)
+		Fixed: Line clipping bug on right and bottom edges
+		Fixed: print() precision for whole numbers
+		Fixed: print() broken for negative y values
+		Fixed: tokenization and keyword highlighting
+		Fixed: sprite properties not copied/pasted
+		Fixed: Only sfx 0..32 could be used as music patterns
+		Fixed: Saving and loading a .p8 file adds newline to end of code
+		Fixed: Drag selection to left margin in code editor -> selects all
+		
+		
+	v0.1.0
+
+		Added: demo cart: hello.p8 (use install_demos)
+		Added: CTRL-R from anywhere to run cart or restart cart
+		Added: use a,s to select colour in gfx editor
+		Added: consistent operation cpu costs
+		Added: btn(), btnp() with no arguments returns bitfield
+		Added: fget(id) returns bitfield of that sprite's flags
+		Changed: renamed mapdraw() to map() for consistency
+		Changed: default sleep time is 5ms (better cpu consumption for laptops)
+		Fixed: memory limiter
+		Fixed: wonky line and circle drawing
+		Fixed: shift-click volume in sfx editor to set all
+		Fixed: number formatting is now never in scientific notation
+		Fixed: clipped error messages in console
+		Fixed: text undo stores rollback points when chaning line number
+		Fixed: print(str) carriage returns to previous x
+
+
+	v0.0.5
+
+		Added: help()
+		Added: Ctrl+F / Ctrl+G to search for text, repeat search
+		Added: del key in code editor
+		Added: Short-hand single-line IF statements
+		Added: Unary operators += -= /= *= %=
+		Added: srand(), time(), added rnd() to docs
+		Added: Ctrl+D to duplicate line
+		Added: interactive ls() for multi-page file listings
+		Added: band() bor() bxor() bnot() shl() shr()
+		Added: runtime error line number
+		Added: dir() (aliased to ls())
+		Changed: print() only autoscrolls when called with no parameters
+		Changed: alt+up/down to skip between function definitions (was ctrl)
+		Changed: sspr() dw, dh defaults to sw, sh
+		Fixed: Load crashes on files that are not .p8 format or directories
+		Fixed: Misc editor cursor position glitches
+		Fixed: Crash when syntax error occurs before viewing code
+		Fixed: Broken newlines after rebooting
+		Fixed: mkdir() called with no parameters creating "(null)" directory
+		Fixed: scrolling past top of code with scrollwheel
+		Fixed: alt-f4 to fastquit
+
+
+	v0.0.4
+
+		Added: Jelpi demo cart
+		Added: Internal carts // use install_demos()
+		Added: Joystick support
+		Added: Undo/redo in code editor
+		Added: Scroll wheel in code editor
+		Added: LCTRL + UP/DOWN to navigate functions in code editor
+		Added: LALT + LEFT/RIGHT to switch editing modes
+		Added: btnp()
+		Added: Release looping sample (a in editor , sfx(-2, channel) in code)
+		Changed: Music stops when pausing program execution
+		Changed: Allow 8 settable sprite flags
+		Changed: Made noise instrument more bassy
+		Fixed: Home, end keys
+		Fixed: Sprite flags 4,5 not saved
+		Fixed: mset() discarding 4 high bits
+		Fixed: Crash when highlighting long strings
+
+
+	v0.0.3
+
+		Added: Palette mapping type 1 (on display)
+		Added: Collections can be initialized with c={1,2,..}
+		Added: holdframe() // used automatically by _draw(), update()
+		Added: Sprite selections and operations across selections
+		Added: Map selection and stamp tool
+		Added: Immediate mode screen buffer preserved while switching views
+		Added: Channel mask for music playback
+		Added: Memory mapping for live sound data
+		Added: .png cart format
+		Added: Sprite navigation by keyboard (-, +)
+		Fixed: Strict 4-channel sound
+		Fixed: Automatic sfx channel selection (channel index: -1)
+
+
+	v0.0.2
+
+		Added: Command history
+		Added: P2 keys
+		Added: Boot sequence
+		Added: Windows, 64-bit linux builds
+		Added: CPU cost of internal api functions
+		Added: Separate song channel index and mute status
+		Added: Memory mapping
+		Added: Search/replace colour in sprite editor
+		Added: Copy/paste sprites and map regions
+		Improved: Immediate mode command editing
+		Improved: Editor cursor behaviour
+		Fixed: Automatic audio channel selection
+
+
+	v0.0.1 
+
+		First Alpha
+
+
+

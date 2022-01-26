@@ -1,16 +1,9 @@
 pico-8 cartridge // http://www.pico-8.com
 version 33
 __lua__
--- ⌂ main
+-- main
 
 -- [todo]
--- collisions inter bullets.
--- enemy bullets collisions.
-			-- enemy friendly fire?
--- laser destroy enemy bullets.
--- enemy using laser.
-			-- need a charging feedback.
--- sfx.
 -- music?
 
 function _init()
@@ -62,6 +55,7 @@ function mainmenu_update()
 	 then
 				fade_perc_target=1
 				start_pressed=true
+				sfx(13)
 		elseif not fading
 		and start_pressed
 		and nofade_timer>10
@@ -75,11 +69,12 @@ function mainmenu_draw()
 		stars_draw()
 		rectfill(39,28,86,64,0)
 		spr(165,20,16,11,6) -- logo.
-		print("robin si❎",44,70,2)
+		print("robin si❎",44,74,2)
 		
 		if not fading 
 		and nofade_timer>60
 		then
+				if (nofade_timer==61) sfx(12)
 				local _c=table_mod(startcolseq,startcoltimer,5,0)
 				print("press ❎ to start",30,100,_c)
 		end
@@ -103,6 +98,7 @@ function game_update()
 		enms_update()
 		bonus_update()
 		bullets_collision()
+		bullets_enms_collision()
 		pl_collision()
 		stars_update()
 		shake_update()
@@ -145,9 +141,11 @@ function gameover_update()
 				if btn(❎) then
 				  retry_pressed=true
 						fade_perc_target=1
+						sfx(13)
 				elseif btn(🅾️) then
 				  exit_pressed=true
 						fade_perc_target=1
+						sfx(13)
 				end
 		end
 		
@@ -168,13 +166,15 @@ function gameover_draw()
 		gui_draw()
 		
 		if nofade_timer>210 then
+		  if (nofade_timer==211) sfx(12)
+				
 				local _c=table_mod(startcolseq,startcoltimer,5,0)
 				print("press ❎ to retry",30,56,_c)
 		  print("press 🅾️ to exit",32,66,5)
 		end
 end
 -->8
--- 웃 player.
+-- player
 
 function pl_init()
 		pl_spd=1
@@ -183,6 +183,8 @@ function pl_init()
 		pl_dead=false
 		pl_spdboost_incr=0.5
 		pl_dmgflash_timer=0
+		pl_invulnerabilitydur=60
+		pl_invulnerabilitytimer=0
 		
 		pl={x=60,y=90,spd=pl_spd}
 end
@@ -193,19 +195,26 @@ function pl_update()
 		if (pl_dead) return
 		pl_move()
 		pl_shoot()
+		
+		if not pl_can_be_hurt() then
+    pl_invulnerabilitytimer-=1
+  end
 end
 
 function pl_draw()
 		if (pl_dead) return
 		
-		local _s=1
-		if is_laser_on() then
-				_s=3
-		elseif curr_bns[2] then
-				_s=2
-		end
-  
-  spr(_s,pl.x,pl.y)
+		if pl_can_be_hurt()
+		or pl_invulnerabilitytimer%12<6 then
+				local _s=1
+				if is_laser_on() then
+						_s=3
+				elseif curr_bns[2] then
+						_s=2
+				end
+		  
+		  spr(_s,pl.x,pl.y)
+  end
 end
 
 function pl_move()
@@ -241,14 +250,25 @@ function pl_shoot()
 		end
 end
 
+function pl_can_be_hurt()
+  return pl_invulnerabilitytimer==0
+end
+
 function pl_dmg(_d)
+  if not pl_can_be_hurt() then
+    return
+  end
+
 		pl_health=max(0,pl_health-_d)
+		sfx(5)
+		sfx(6)
 		
 		-- game over.
 		if pl_health==0 then
 				pl_dead=true
 				gameover_init()
 				
+				sfx(11)
 				for i=0,4 do
 						ptcs_add(pl.x,
 															pl.y,
@@ -260,6 +280,8 @@ function pl_dmg(_d)
 				end
 				
 				shake_set(0.2)
+		else
+		  pl_invulnerabilitytimer=pl_invulnerabilitydur
 		end
 		
 		pl_dmgflash_timer=2
@@ -267,6 +289,7 @@ end
 
 function pl_heal(_h)
 		pl_health=min(pl_healthmax,pl_health+_h)
+		sfx(8)
 end
 
 function pl_spdboost()
@@ -275,24 +298,16 @@ end
 
 function pl_collision()
 		-- enemies.
-		for e in all(enms) do
-				if (abs(e.x-pl.x)<5)
-				and (abs(e.y-pl.y)<5)
-				then
-						del(enms,e)
-						shake_add(0.15)
-						pl_dmg(1)
-						if (pl_health>0) then	
-								pl.y+=2 -- recoil.
-								for i=0,6 do
-										ptcs_add(pl.x+2,
-																			pl.y+2,
-																			-3+rnd(6),
-																			-3+rnd(6),
-																			36,
-																			{10,1,9,8,2,2,2,1},
-																			rnd(8,16))
-								end
+		if pl_can_be_hurt() then
+				for e in all(enms) do
+						if (abs(e.x-pl.x)<5)
+						and (abs(e.y-pl.y)<5)
+						then
+								del(enms,e)
+								pl_dmg(1)
+								on_player_dmg()
+								
+								if (e.laserstate==2) remove_laser()
 						end
 				end
 		end
@@ -307,18 +322,38 @@ function pl_collision()
 		end
 end
 
+function on_player_dmg()
+		shake_add(0.15)
+		if (pl_health>0) then	
+				pl.y+=2 -- recoil.
+				for i=0,6 do
+						ptcs_add(pl.x+2,
+															pl.y+2,
+															-3+rnd(6),
+															-3+rnd(6),
+															36,
+															{10,1,9,8,2,2,2,1},
+															rnd(8,16))
+				end
+		end
+end
+
 function scr_add(_s)
 		scr+=_s
 		
 		-- add enemies.
-		if scr>1000
+		if scr>100
 		and enms_cats_availables==1
 		then
 				enms_cats_availables=2
+		elseif scr>1000
+		and enms_cats_availables==2
+		then
+				enms_cats_availables=3
 		end
 end
 -->8
--- 🅾️ bullets.
+-- bullets
 
 function bullets_init()
 		bls={}
@@ -333,6 +368,7 @@ function bullets_init()
 		curr_bls_cat=1
 		bls_setcat(curr_bls_cat)
 
+  curr_lasers_count=0
 		bls_explosion={x=0,y=0,t=0}
 end
 
@@ -382,11 +418,23 @@ end
 function bullets_add()
 		local _b={x=pl.x,y=pl.y-2,spd=curr_bls.spd,cat=curr_bls_cat}
 		add(bls,_b)
+		sfx(curr_bls_cat-1)
 end
 
 function bullets_enms_add(_e)
 		local _b={x=_e.x,y=_e.y+8,spd=1.8}
 		add(bls_enms,_b)
+end
+
+function add_laser()
+		curr_lasers_count+=1
+		if (curr_lasers_count==1) sfx(10)
+end
+
+function remove_laser()
+		curr_lasers_count-=1
+		if (curr_lasers_count<0) curr_lasers_count=0
+		if (curr_lasers_count==0) sfx(10,-2)
 end
 
 function laser_update()
@@ -401,6 +449,9 @@ function laser_update()
 						scr_add(e.scr)
 						del(enms,e)
 						enms_spawn()
+						
+						if (e.laserstate==2) remove_laser()
+						
 						for i=0,6 do
 								ptcs_add(e.x+4,
 																	e.y-2,
@@ -410,6 +461,14 @@ function laser_update()
 																	{3,1,11,2,13,3,1},
 																	3+rnd(3))
 						end
+				end
+		end
+		
+		for b in all(bls_enms) do
+				if abs(b.x-pl.x)<3
+				and b.y<pl.y
+				then
+						del(bls_enms,b)
 				end
 		end
 
@@ -466,6 +525,8 @@ function bullets_collision()
 							enms_spawn()
 							bonus_try_add(e.x,e.y)
 							
+							if (e.laserstate==2) remove_laser()
+							
 							if b.cat==1 then
 									on_base_bullet_hit(b)
 							elseif b.cat==2 then
@@ -482,10 +543,54 @@ function bullets_collision()
 	end
 end
 
+function bullets_enms_collision()
+	for b in all(bls_enms) do
+	
+	  -- player.
+			if (abs(pl.x-b.x)<6)
+			and (abs(pl.y-b.y)<4)
+			then
+			  del(bls_enms,b)
+					pl_dmg(1)
+					on_player_dmg()
+					
+					goto continue
+	  end
+	
+			-- enemies.
+			for e in all(enms) do
+					if e.cat!=2
+					and abs(e.x-b.x)<6
+					and abs(e.y-b.y)<4
+					then
+							del(bls_enms,b)
+							del(enms,e)
+							sfx(3)
+							enms_spawn()
+
+							for i=0,3 do
+									ptcs_add(b.x+4,
+																		b.y-2,
+																		-4+rnd(8),
+																		-4+rnd(8),
+																		24,
+																		{7,8,4,2,1},
+																		3+rnd(3))
+							end
+							
+							goto continue
+					end
+			end
+	
+	::continue::
+	end
+end
+
 function on_base_bullet_hit(_b)
 		del(bls,_b)
 
 		shake_set(0.08)
+		sfx(3)
 		for i=0,3 do
 				ptcs_add(_b.x+4,
 													_b.y-2,
@@ -499,6 +604,7 @@ end
 
 function on_piercing_bullet_hit(_b)
 		shake_set(0.12)
+		sfx(3)
 		for i=0,4 do
 				ptcs_add(_b.x+4,
 													_b.y-8,
@@ -522,10 +628,14 @@ function on_exploding_bullet_hit(_b)
 						scr_add(e.scr)
 						del(enms,e)
 						enms_spawn()
+						
+						if (e.laserstate==2) remove_laser()
 				end
 		end
 
 		shake_set(0.2)
+		sfx(3)
+		sfx(14)
 		for i=0,10 do
 				ptcs_add(_b.x+4,
 													_b.y-4,
@@ -537,7 +647,7 @@ function on_exploding_bullet_hit(_b)
 		end
 end
 -->8
--- 🐱 enemies.
+-- enemies
 
 function enms_init()
   enms={}
@@ -548,13 +658,21 @@ function enms_init()
 																	spdmin=0.2,
 												     spdmax=0.6,
 												     scr=10,
-												     drop=0.8})
+												     drop=15})
 															     
 		add(enms_cats,{cat=1,
 		               spdmin=0.4,
 												     spdmax=0.4,
 												     scr=50,
-												     drop=0.2})
+												     drop=4})
+												     
+  add(enms_cats,{cat=2,
+		               spdmin=0.2,
+												     spdmax=0.2,
+												     scr=100,
+												     drop=2})
+
+		enms_lasers={}
 
 		for i=0,14 do
 				enms_spawn()
@@ -564,16 +682,43 @@ end
 function enms_update()
 		for e in all(enms) do
 				e.y+=e.spd
-				if e.y>128 then
+				if e.y>128
+				and e.laserstate!=2
+				then
 						del(enms,e)
 						enms_spawn()
 				end
 				
-				-- shooting enemies.
-				if e.cat==1 then
-				  if e.lifetime%120==0 then
-				  		bullets_enms_add(e)
-				  end
+				if e.y>-8 then
+						if e.cat==1 then
+								-- shooting enemies.
+						  if e.lifetime%120==0 then
+						  		bullets_enms_add(e)
+						  		sfx(4)
+						  end
+						elseif e.cat==2 then
+								-- laser enemies.
+								if e.lifetime>0
+								and e.lifetime%180==0
+								then
+								  e.laserstate=1
+								end
+								if e.lifetime>0
+								and e.lifetime%300==0
+								and e.laserstate==1
+								then
+										e.laserstate=2
+										add_laser()
+								elseif e.lifetime%360==0
+								then
+								  remove_laser()
+								  e.laserstate=0
+								end
+						end
+				end
+				
+				if e.laserstate==2 then
+				  enms_laser_update(e)
 				end
 				
 				e.lifetime+=1
@@ -582,8 +727,27 @@ end
 
 function enms_draw()
 		for e in all(enms) do
+				if e.laserstate>0 then
+				  enms_laser_draw(e,e.laserstate)
+				end
 				spr(49+e.cat,e.x,e.y)
 		end
+end
+
+function enms_get_pos()
+		::notok::
+		local _x=8+rnd(112)
+		local _y=-100+rnd(80)
+		
+		for e in all(enms) do
+		  if abs(e.x-_x)<4
+		  and abs(e.y-_y)<32
+		  then
+		    goto notok
+		  end
+		end
+		
+		return {x=_x,y=_y}
 end
 
 function enms_rnd_drop()
@@ -607,24 +771,95 @@ end
 
 function enms_spawn()
 		local _e=enms_rnd_drop()
+		local _pos=enms_get_pos()
 
 		local _newenm={
 		  cat=_e.cat,
-				x=8+rnd(112),
-				y=-100+rnd(80),
+				x=_pos.x,
+				y=_pos.y,
 				spd=_e.spdmin+rnd(_e.spdmax-_e.spdmin),
 				sprindex=_e.sprindex,
 				scr=_e.scr,
-				lifetime=0}
+				lifetime=0,
+				laserstate=0}
 						
 		add(enms,_newenm)
 end
 
+function enms_laser_update(_e)
+  if abs(pl.x-_e.x)<4
+  and pl.y>_e.y
+  then
+  		pl_dmg(2)
+  end
+  
+  for e in all(enms) do
+		  if abs(e.x-_e.x)<5
+		  and e.y>_e.y
+		  then
+						del(enms,e)
+						enms_spawn()
+						
+						if (e.laserstate==2) remove_laser()
+						
+						for i=0,3 do
+								ptcs_add(e.x+2,
+																	e.y+2,
+																	-4+rnd(8),
+																	-4+rnd(8),
+																	18+rnd(6),
+																	{7,8,8,2,1},
+																	rnd(6,10))
+						end
+		  end
+		end
+end
+
+function enms_laser_draw(_e,_laserstate)
+	 if _laserstate==2 then
+	 		-- firing laser.
+	
+				laser_sparks={}
+				local _yoffset=ceil((128-_e.y)/10)+1
+				local _yoffsetmax=(128/10)+1
+				
+				for i=0,_yoffset do
+						local _pt={
+								x=_e.x+(-2+rnd(12)),
+								y=_e.y+4+_yoffsetmax*i}
+								
+						if (i==0) _pt.x=_e.x+4
+						add(laser_sparks,_pt)
+				end
+				
+				for i=1,#laser_sparks-2 do
+						local _pt=laser_sparks[i]
+						local _ptnext=laser_sparks[i+1]
+						line(_pt.x,_pt.y,_ptnext.x,_ptnext.y,8)
+				end
+		
+		  rectfill(_e.x+2,_e.y+5,_e.x+5,128,8)
+				rectfill(_e.x+3,_e.y+5,_e.x+4,128,7)
+		else
+				-- charging laser.
+				local _iterations=(128-_e.y)/4+1
+				for i=1,_iterations do
+						local _x=_e.x+3
+						if (i%2==0) _x+=1
+						pset(_x,_e.y+i*4,8)
+				end
+		end
+end
+
 function enms_killall()
+		for e in all(enms) do
+		  if (e.laserstate==2) remove_laser()
+		end
+		
 		enms={}
 end
 -->8
--- ♥ bonus.
+-- bonus
 
 function bonus_init()
 		bns={}
@@ -673,6 +908,8 @@ function bonus_update()
 										end
 								elseif i==3 or i==4 then
 										bls_setcat(1)
+								elseif i==5 then
+								  remove_laser()
 								end
 						end
 				end
@@ -718,6 +955,7 @@ function bonus_pickup(_b)
 				end
 		elseif _b.cat==2 then
 				pl_spdboost()
+				sfx(7)
 				for i=0,6 do
 						ptcs_add(_b.x+2,
 															_b.y+2,
@@ -732,6 +970,7 @@ function bonus_pickup(_b)
 				bls_setcat(2)
 				bns_timers[4]=0
 				curr_bns[4]=false
+				sfx(9)
 				for i=0,4 do
 						ptcs_add(_b.x+2,
 															_b.y+2,
@@ -745,6 +984,7 @@ function bonus_pickup(_b)
 				bls_setcat(3)
 				bns_timers[3]=0
 				curr_bns[3]=false
+				sfx(9)
 				for i=0,4 do
 						ptcs_add(_b.x+2,
 															_b.y+2,
@@ -760,6 +1000,7 @@ function bonus_pickup(_b)
 				curr_bns[3]=false
 				curr_bns[4]=false
 				bls_setcat(1)
+				add_laser()
 		end
 		
 		if (_b.cat>1) curr_bns[_b.cat]=true
@@ -771,7 +1012,7 @@ function is_laser_on()
 		return curr_bns[5]
 end
 -->8
--- ★ stars.
+-- stars
 
 function stars_init()
 		stars={}
@@ -832,7 +1073,7 @@ function stars_draw()
 		end
 end
 -->8
--- ⧗ feedback.
+-- feedback
 
 shake=0
 ptcs={}
@@ -919,7 +1160,7 @@ function screenflash_draw()
 		return false
 end
 -->8
--- ▤ gui.
+-- gui
 
 lowhealthsprseq={17,34,35}
 lowhealthsprtimer=0
@@ -976,7 +1217,7 @@ function gui_draw_bonus()
 		end
 end
 -->8
--- tools.
+-- tools
 
 function lerp(_a,_b,_t)
 	 return _a*(1-_t)+_b*_t
@@ -1054,12 +1295,12 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000aaa0aaa0a0a0a0a00a00aa00aa0000888000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009090909090909009009000909000080000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000990090909990999009009990909000000000000
-00000000007007000070070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000002002000020020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000005555550dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000556ee655dd1111dd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000555ee5550dd55dd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000052002500880088000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000007007000070070000700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000020020000200200002dd200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000005555550dddddddd05555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000556ee655dd1111dd66888866000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000555ee5550dd55dd006655660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000052002500880088006200260000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000008008000800008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000007007000700007000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1158,3 +1399,19 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000aa00aa00aa00aa00aa00aa00aa0000aa0000aa000000aa00aa0000000000000000000
 00000000000000000000000000000000000000000000000000000009999000099009900999999009999990000990000999999009900990000000000000200000
 00000000000000000000000000000000000000000000000000000009999000099009900999999009999990000990000999999009900990000000000000000000
+__sfx__
+00010000371503615035150321502f1402c14026130211201b120141500a150021500015013100111000e1000c1000a1000810006100031000010000100001000010000100001000010000100001000010000100
+000100003d1503a15037150331502c150261502015018150121500b15006150011500015000150001500015000150001500015000100001000010000100001000010000100001000010000100001000010000100
+000100002e1502a1502715025150221501f1501d1501b1501815016150121500f1500e1500b150091500815006150041400314002140001300010000100001000010000100001000010000100001000010000100
+000100002467025670246701b67010670056700a6700d6700a67004670016700b6700e6600b660036500065000640026400163000610006000160000600006000160002600006000060006600006000060002600
+000100003b05036050310502a0501f0501605005050000500f0400b03008010060000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0001000014070110700f0700b07008070000700607000070040700007003060030600006003060020600106001060000000000000000000000000000000000000000000000000000000000000000000000000000
+00010000356502b6502265019650176501c65022650266501b650166501b65023650156500a6501065008650066500e65007650056500a6500365001650000000000000000000000000000000000000000000000
+000100003e2503225000200202002325022250002001a2500020022200252000e25000200002001420002250132001820018200002000020000200132000020000200002000a2000a20000200002000020000200
+00010000291502a1602b16029150211401814012140101400f1400f1401015011140161301e13026130151001e1002a1001a10020100001000010000100001000010000100001000010000100001000010000100
+000200003c6303c6302d6302762026610266002660026600276003860037600286002760025600226002160010600086000360000600006000060000600006000060000600006000060000600006000060000600
+000100200a4233b2210a1233b4210b023302310b323302210a1233b2210a4233b2310a0233b2210a1233b221091233a221091333a6210a4233b2210a1233b2310a7233b2210a3233b2210a1233b2310a6233b421
+000300000c363236650936520651063511b65104341166410234112631013310e6310233109630023200762000310036100030003600026000160001600016000160004600036000260001600016000160001600
+000600002205029050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00010000000003b05000000192502c0500000012250030001b050000000b250000001005000000062500d05000000022500805000000000000405000000000000105000000000000005000000000000000000000
+00020000052670061710267006171236700617123570161712357016170a157006170d147006170d147006170b047006170b037006170a037006170a727006170b727006170c717006170b117006170811700617

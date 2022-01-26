@@ -133,3 +133,16 @@ end
 	else
 		cartdata("pumpkin_slasher")
 	end
+	
+	
+	
+	
+	
+	
+	
+	
+-- low token count movement (can be put on one line)
+
+z=btn()
+x+=(z\2%2-z%2)/300
+y+=(z\8%2-z\4%2)/300
