@@ -1,0 +1,29 @@
+function dist_sqr(_ax,_ay,_bx,_by)
+	return (_ax-_bx)*(_ax-_bx)+(_ay-_by)*(_ay-_by)
+end
+
+
+
+function lerp(_a,_b,_t)
+	return _a*(1-_t)+_b*_t
+end
+
+
+
+function get_table_item_mod(_table,_rate,_offset)
+	return _table[flr((timer+_offset)/_rate)%#_table+1]
+end
+
+
+
+function print_shadow(_txt,_x,_y,_col,_scol)
+	print(_txt,_x,_y+1,_scol)
+	print(_txt,_x,_y,_col)
+end
+
+
+
+-- low token count movement (can be put on one line)
+z=btn()
+x+=(z\2%2-z%2)/300
+y+=(z\8%2-z\4%2)/300

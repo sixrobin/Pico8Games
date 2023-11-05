@@ -1,0 +1,9 @@
+domain=stat(102)
+if domain!=0
+and domain!="v6p9d9t4.ssl.hwcdn.net" -- itchio
+and domain!="www.lexaloffle.com"
+then
+	pirated=true
+else
+	cartdata("pumpkin_slasher")
+end
