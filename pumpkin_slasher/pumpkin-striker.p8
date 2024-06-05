@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 29
+version 41
 __lua__
 -- pumpkin slasher.
 -- robin six.
@@ -28,12 +28,12 @@ __lua__
 function _draw()
 	cls(0)
 	
-	if pirated then
-		print("this version has been stolen.",3,40,8)
-		print("play the game on",3,54,2)
-		print("sixrobin.itch.io/pumpkinslasher",3,61,2)
-		return
-	end
+	-- if pirated then
+	-- 	print("this version has been stolen.",3,40,8)
+	-- 	print("play the game on",3,54,2)
+	-- 	print("sixrobin.itch.io/pumpkinslasher",3,61,2)
+	-- 	return
+	-- end
 	
 	fade_pal(fade_perc)
 
@@ -63,15 +63,15 @@ function _draw()
 end
 
 function _init()
-	domain=stat(102)
-	if domain!=0
-	and domain!="v6p9d9t4.ssl.hwcdn.net"
-	and domain!="www.lexaloffle.com"
-	then
-		pirated=true
-	else
+	-- domain=stat(102)
+	-- if domain!=0
+	-- and domain!="v6p9d9t4.ssl.hwcdn.net"
+	-- and domain!="www.lexaloffle.com"
+	-- then
+	-- 	pirated=true
+	-- else
 		cartdata("pumpkin_slasher")
-	end
+	-- end
 
 	-- ● debug.
 	--add(lvls,lvl_tuto)
